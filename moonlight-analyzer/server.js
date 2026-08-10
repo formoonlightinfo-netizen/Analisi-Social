@@ -11,6 +11,7 @@ import {
 import { generateReport, engagementRate, platformGap } from './src/report.js';
 import { prepareIncoming } from './src/processVideo.js';
 import { saveAnalysis } from './src/saveAnalysis.js';
+import { persistDb } from './src/persist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -48,6 +49,7 @@ app.patch('/api/contents/:id', (req, res) => {
     return res.status(400).json({ error: 'Nessun campo valido da aggiornare (caption, category).' });
   }
   updateContentFields(req.params.id, fields);
+  persistDb(`Aggiorna caption/categoria: ${req.params.id}`);
   res.json(decorate(getContentById(req.params.id)));
 });
 
@@ -77,6 +79,7 @@ app.post('/api/contents/:id/metrics', (req, res) => {
   }
 
   upsertPlatformMetrics(req.params.id, platform, metrics);
+  persistDb(`Aggiorna metriche ${platform}: ${req.params.id}`);
   res.json(decorate(getContentById(req.params.id)));
 });
 
@@ -100,6 +103,7 @@ app.post('/api/contents/:id/analysis', (req, res) => {
   if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
   try {
     saveAnalysis(req.params.id, req.body);
+    persistDb(`Salva analisi visiva: ${req.params.id}`);
     res.json(decorate(getContentById(req.params.id)));
   } catch (err) {
     res.status(400).json({ error: err.message });

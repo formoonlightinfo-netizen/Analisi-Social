@@ -4,6 +4,8 @@ Questo repository contiene `moonlight-analyzer/`, un'app che aiuta Helga (@moonl
 
 **Principio chiave**: l'analisi visiva dei video la fai TU, Claude Code, guardando i fotogrammi con lo strumento Read — non si chiama nessuna API Claude esterna a pagamento. Questo perché Helga paga già un abbonamento Claude e non vuole costi aggiuntivi.
 
+**Importante — sessioni cloud effimere**: se Helga lavora da una sessione cloud (container che si resetta quando la sessione finisce), i video in `incoming/`/`processed/` e i fotogrammi in `frames/` NON sono salvati su git e vanno persi al reset. Solo `data/contenuti.db` viene salvato automaticamente su GitHub (il server e gli script chiamano `persistDb()` dopo ogni modifica). Per questo motivo: **quando prepari ed analizzi dei video, completa l'intero ciclo (estrazione → guarda fotogrammi → salva analisi) nella stessa sessione/conversazione**, senza lasciare video "a metà" da una sessione all'altra. Se un video risulta `pending_analysis` ma i suoi fotogrammi non ci sono più (controllalo con `node src/listPending.js`, campo `framesAvailable`), va semplicemente ritrascinato in `incoming/` e ripreparato.
+
 ## Quando l'utente chiede di "analizzare i video nuovi / in sospeso"
 
 1. **Estrai i fotogrammi dei nuovi video**: esegui da terminale, nella cartella `moonlight-analyzer/`:

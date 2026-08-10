@@ -59,6 +59,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     const analysis = JSON.parse(jsonArg);
     saveAnalysis(id, analysis);
+    const { persistDb } = await import('./persist.js');
+    persistDb(`Salva analisi visiva: ${id}`);
     console.log(`✔ Analisi salvata per ${id}`);
   } catch (err) {
     console.error(`✘ ${err.message}`);
