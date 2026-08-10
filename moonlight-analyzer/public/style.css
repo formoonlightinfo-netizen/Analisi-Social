@@ -39,16 +39,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 28px;
+  padding: 14px 28px;
   border-bottom: 1px solid var(--border-soft);
-  background: rgba(26, 22, 37, 0.7);
+  background: rgba(18, 26, 43, 0.75);
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
   z-index: 5;
 }
 
-.topbar h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+.topbar h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+.brand-logo { height: 34px; width: auto; display: block; }
+.brand-fallback { display: none; font-size: 20px; }
 
 button {
   background: var(--panel-2);
