@@ -24,6 +24,11 @@ const FORMAT_LABELS = {
   slideshow: 'Slideshow',
   altro: 'Altro',
 };
+const STATUS_BADGES = {
+  pending_analysis: '<span class="badge gap-analyzing">in coda</span>',
+  analyzing: '<span class="badge gap-analyzing">🔄 analisi in corso</span>',
+  analysis_failed: '<span class="badge gap-failed">⚠ analisi fallita</span>',
+};
 
 function toast(message, isError = false) {
   toastEl.textContent = message;
@@ -54,9 +59,38 @@ async function api(path, options) {
   return data;
 }
 
+async function uploadVideo(file) {
+  const formData = new FormData();
+  formData.append('video', file);
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Errore ${res.status}`);
+  return data;
+}
+
+let pollTimer = null;
+function ensurePolling() {
+  const hasPending = state.contents.some((c) => c.status === 'analyzing' || c.status === 'pending_analysis');
+  if (!hasPending) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+    return;
+  }
+  if (pollTimer) return;
+  pollTimer = setTimeout(async () => {
+    pollTimer = null;
+    await loadContents();
+    if (state.selectedId) {
+      const stillThere = state.contents.find((c) => c.id === state.selectedId);
+      if (stillThere) await selectContent(state.selectedId);
+    }
+  }, 4000);
+}
+
 async function loadContents() {
   state.contents = await api('/api/contents');
   renderList();
+  ensurePolling();
 }
 
 function sortedContents() {
@@ -75,7 +109,7 @@ function renderList() {
   const list = sortedContents();
   listEl.innerHTML = '';
   if (list.length === 0) {
-    listEl.innerHTML = '<li class="placeholder">Nessun contenuto ancora. Trascina un video in incoming/ e premi "Scansiona".</li>';
+    listEl.innerHTML = '<li class="placeholder">Nessun contenuto ancora. Carica un video qui sopra per iniziare.</li>';
     return;
   }
   for (const content of list) {
@@ -87,12 +121,10 @@ function renderList() {
     const hookBadge = content.hook_type
       ? `<span class="badge neutral">${HOOK_LABELS[content.hook_type] || content.hook_type}</span>`
       : '';
-    const pendingBadge = content.status === 'pending_analysis'
-      ? '<span class="badge gap-alto">in attesa di analisi</span>'
-      : '';
+    const statusBadge = STATUS_BADGES[content.status] || '';
     li.innerHTML = `
       <div class="filename">${content.caption?.slice(0, 60) || content.filename}</div>
-      <div class="meta">${pendingBadge}${hookBadge}${gapBadge}</div>
+      <div class="meta">${statusBadge}${hookBadge}${gapBadge}</div>
     `;
     li.addEventListener('click', () => selectContent(content.id));
     listEl.appendChild(li);
@@ -129,10 +161,16 @@ function renderDetail(content) {
     </div>
     <div class="save-row"><button id="saveCaptionBtn" class="primary">Salva caption/categoria</button></div>
 
-    ${content.status === 'pending_analysis' ? `
+    ${content.status === 'pending_analysis' || content.status === 'analyzing' ? `
     <div class="analysis-card">
       <h3>Analisi visiva</h3>
-      <p class="placeholder">In attesa di analisi — apri una chat con Claude Code su questo progetto e chiedi di analizzare i video in sospeso (i fotogrammi sono già pronti).</p>
+      <p class="placeholder">${content.status === 'analyzing' ? '🔄 Analisi in corso... di solito richiede 1-3 minuti, questa pagina si aggiorna da sola.' : 'In coda per l\'analisi.'}</p>
+    </div>
+    ` : content.status === 'analysis_failed' ? `
+    <div class="analysis-card">
+      <h3>Analisi visiva</h3>
+      <p class="placeholder">⚠ Analisi non riuscita: ${content.analysis_notes || 'errore sconosciuto'}</p>
+      <div class="save-row"><button id="retryBtn" class="primary">Riprova analisi</button></div>
     </div>
     ` : `
     <div class="analysis-card">
@@ -158,7 +196,19 @@ function renderDetail(content) {
 
   document.getElementById('saveCaptionBtn').addEventListener('click', () => saveCaption(content.id));
   for (const platform of ['instagram', 'tiktok']) {
-    document.getElementById(`save-${platform}`).addEventListener('click', () => saveMetrics(content.id, platform));
+    document.getElementById(`save-${platform}`)?.addEventListener('click', () => saveMetrics(content.id, platform));
+  }
+  document.getElementById('retryBtn')?.addEventListener('click', () => retryAnalysis(content.id));
+}
+
+async function retryAnalysis(id) {
+  try {
+    await api(`/api/contents/${id}/reanalyze`, { method: 'POST' });
+    toast('Nuovo tentativo di analisi avviato.');
+    await loadContents();
+    await selectContent(id);
+  } catch (err) {
+    toast(err.message, true);
   }
 }
 
@@ -226,16 +276,53 @@ async function saveMetrics(id, platform) {
   }
 }
 
-document.getElementById('scanBtn').addEventListener('click', async () => {
+const dropzone = document.getElementById('dropzone');
+const videoInput = document.getElementById('videoInput');
+const browseBtn = document.getElementById('browseBtn');
+const uploadProgress = document.getElementById('uploadProgress');
+const uploadProgressText = document.getElementById('uploadProgressText');
+
+browseBtn.addEventListener('click', () => videoInput.click());
+videoInput.addEventListener('change', () => {
+  if (videoInput.files[0]) handleUpload(videoInput.files[0]);
+  videoInput.value = '';
+});
+
+['dragenter', 'dragover'].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.add('drag-over');
+  })
+);
+['dragleave', 'drop'].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+  })
+);
+dropzone.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) handleUpload(file);
+});
+
+async function handleUpload(file) {
+  if (!/\.mp4$/i.test(file.name)) {
+    toast('Sono accettati solo file .mp4.', true);
+    return;
+  }
+  uploadProgress.classList.remove('hidden');
+  uploadProgressText.textContent = `Caricamento di ${file.name}...`;
   try {
-    const result = await api('/api/scan', { method: 'POST' });
-    const msg = `Elaborati: ${result.processed.length}` + (result.errors.length ? `, errori: ${result.errors.length}` : '');
-    toast(msg, result.errors.length > 0);
+    await uploadVideo(file);
+    uploadProgressText.textContent = 'Caricato — analisi avviata in background.';
+    toast(`${file.name} caricato, analisi in corso.`);
     await loadContents();
   } catch (err) {
     toast(err.message, true);
+  } finally {
+    setTimeout(() => uploadProgress.classList.add('hidden'), 2000);
   }
-});
+}
 
 sortSelect.addEventListener('change', () => {
   state.sortMode = sortSelect.value;

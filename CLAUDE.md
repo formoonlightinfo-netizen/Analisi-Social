@@ -2,60 +2,30 @@
 
 Questo repository contiene `moonlight-analyzer/`, un'app che aiuta Helga (@moonlight.coach) ad analizzare i video già pubblicati su Instagram/TikTok e a trovare pattern di performance. Vedi `moonlight-analyzer/README.md` per la panoramica completa.
 
-**Principio chiave**: l'analisi visiva dei video la fai TU, Claude Code, guardando i fotogrammi con lo strumento Read — non si chiama nessuna API Claude esterna a pagamento. Questo perché Helga paga già un abbonamento Claude e non vuole costi aggiuntivi.
+## Come funziona l'analisi visiva (nessuna azione manuale richiesta)
 
-**Importante — sessioni cloud effimere**: se Helga lavora da una sessione cloud (container che si resetta quando la sessione finisce), i video in `incoming/`/`processed/` e i fotogrammi in `frames/` NON sono salvati su git e vanno persi al reset. Solo `data/contenuti.db` viene salvato automaticamente su GitHub (il server e gli script chiamano `persistDb()` dopo ogni modifica). Per questo motivo: **quando prepari ed analizzi dei video, completa l'intero ciclo (estrazione → guarda fotogrammi → salva analisi) nella stessa sessione/conversazione**, senza lasciare video "a metà" da una sessione all'altra. Se un video risulta `pending_analysis` ma i suoi fotogrammi non ci sono più (controllalo con `node src/listPending.js`, campo `framesAvailable`), va semplicemente ritrascinato in `incoming/` e ripreparato.
+Quando Helga carica un video dall'interfaccia web (`server.js`, endpoint `POST /api/upload`), il server:
 
-## Quando l'utente chiede di "analizzare i video nuovi / in sospeso"
+1. Estrae durata e fotogrammi con `ffmpeg` (`src/ffmpeg.js`, `src/processVideo.js`)
+2. Lancia in background una sessione **headless e isolata** di Claude Code (`src/runAnalysis.js`, tramite `claude -p ... --allowedTools Read`) che guarda i fotogrammi con lo strumento Read e produce l'analisi in JSON
+3. Salva il risultato nel database (`src/saveAnalysis.js`)
 
-1. **Estrai i fotogrammi dei nuovi video**: esegui da terminale, nella cartella `moonlight-analyzer/`:
-   ```
-   node src/prepareIncoming.js
-   ```
-   Questo scansiona `incoming/`, per ogni video `.mp4` estrae durata e fotogrammi (1 al secondo, lasciati su disco), crea una riga nel database con stato `pending_analysis`, sposta il video in `processed/`. Stampa un JSON con `{ id, framesDir, frameCount, durationSec }` per ciascun video preparato.
+**Non serve mai che un utente scriva in chat "analizza i video"** — è tutto automatico dal momento in cui il video viene caricato. Questo usa lo stesso accesso di Claude Code già configurato in questo ambiente (nessuna chiave `ANTHROPIC_API_KEY` separata, nessun costo API a consumo aggiuntivo — rientra nell'abbonamento Claude di Helga).
 
-   Se vuoi invece recuperare video già preparati in sessioni precedenti (fotogrammi già estratti ma non ancora analizzati, es. sessione interrotta), usa:
-   ```
-   node src/listPending.js
-   ```
+Il processo headless viene lanciato con le variabili `CLAUDE_CODE_SESSION_ID` / `CLAUDE_CODE_REMOTE_SESSION_ID` rimosse dall'ambiente, per evitare che si agganci alla sessione interattiva corrente: deve essere una sessione indipendente e isolata (vedi `src/runAnalysis.js`).
 
-2. **Guarda i fotogrammi**: per ciascun video preparato, usa lo strumento Read per aprire i file `.jpg` dentro `framesDir` (sono in ordine cronologico, es. `frame-0001.jpg`, `frame-0002.jpg`, ...). Guardali come guarderesti un video: hook iniziale, come evolve il testo in overlay, ambientazione, montaggio.
+## Se stai facendo manutenzione a questo codice
 
-3. **Produci l'analisi** secondo questo schema esatto (stessi valori enum, non altri):
-   ```json
-   {
-     "hook_type": "loop_aperto" | "rivelazione_diretta" | "domanda" | "testimonianza" | "contro_affermazione" | "altro",
-     "text_layering": "progressivo" | "tutto_insieme",
-     "image_text_coherence": "descrizione di quanto l'inquadratura/ambientazione è coerente col messaggio testuale",
-     "coherence_score": <intero 1-5, 5 = massima coerenza>,
-     "format": "parlato_in_camera" | "voiceover_testo" | "montaggio_multiclip" | "slideshow" | "altro",
-     "editing_style": {
-       "ritmo_tagli": "descrizione del ritmo dei tagli",
-       "zoom_transizioni": "uso di zoom, transizioni, effetti",
-       "stile_testo_overlay": "font, animazione, posizione del testo overlay",
-       "coerenza_editing_tono": "quanto lo stile di montaggio è coerente col tono del contenuto"
-     },
-     "pacing": "descrizione del ritmo generale e della durata percepita",
-     "notes": "altre osservazioni utili su cosa funziona o non funziona"
-   }
-   ```
+- Non reintrodurre `@anthropic-ai/sdk` né `ANTHROPIC_API_KEY` — rimossi intenzionalmente.
+- Non tentare mai di accedere a Instagram/TikTok in modo automatizzato (scraping, login bot). Video e metriche li inserisce sempre Helga manualmente, dall'interfaccia web.
+- `src/prepareIncoming.js`, `src/listPending.js`, `src/saveAnalysis.js` restano utilizzabili da riga di comando come strumenti di recupero/debug (es. se un'analisi resta bloccata), ma non fanno più parte del flusso principale, che passa da `src/pipeline.js`.
 
-4. **Salva l'analisi** eseguendo (JSON compatto su una riga, entro apici singoli):
-   ```
-   node src/saveAnalysis.js <id> '<json>'
-   ```
-   Questo aggiorna il database (stato passa ad `analyzed`) e ripulisce i fotogrammi temporanei in `frames/<id>/`.
+## Importante — sessioni cloud effimere
 
-5. Ripeti i passi 2-4 per ogni video restituito al passo 1, poi conferma a Helga quanti video sono stati analizzati (es. "Ho analizzato 3 video, ora puoi inserire caption e metriche dall'interfaccia web").
-
-## Cosa NON fare
-
-- Non installare o usare `@anthropic-ai/sdk` né variabili come `ANTHROPIC_API_KEY` in questo progetto — è stato rimosso intenzionalmente.
-- Non tentare mai di accedere a Instagram/TikTok in modo automatizzato (scraping, login bot). I video e le metriche li inserisce sempre Helga manualmente.
-- Non cancellare `frames/<id>/` prima di aver letto e salvato l'analisi — `saveAnalysis.js` lo fa già automaticamente dopo il salvataggio.
+Se Helga lavora da una sessione cloud (container che si resetta quando la sessione finisce), i video in `incoming/`/`processed/` e i fotogrammi in `frames/` NON sono salvati su git e vanno persi al reset. Solo `data/contenuti.db` viene salvato automaticamente su GitHub (`src/persist.js`, chiamato dopo ogni scrittura: upload, metriche, caption, analisi completata/fallita). Se un'analisi resta bloccata a metà per un reset del container, il video va ricaricato dall'interfaccia web.
 
 ## Altri comandi utili
 
-- `npm start` — avvia il server web locale (form caption/metriche, lista contenuti, report pattern) su `http://localhost:3000`
-- `npm run watch` — osserva `incoming/` e prepara automaticamente ogni nuovo video (solo estrazione fotogrammi, non analisi)
+- `npm start` — avvia il server web (upload, lista contenuti, form caption/metriche, report pattern) su `http://localhost:3000`
+- `npm run watch` — osserva `incoming/` e avvia automaticamente preparazione+analisi per ogni video trascinato lì (alternativa all'upload da web, es. se si sincronizza una cartella da telefono)
 - `npm run report` — stampa il report pattern aggregato da riga di comando

@@ -10,13 +10,22 @@
   <header class="topbar">
     <h1>🌙 Moonlight Content Analyzer</h1>
     <div class="actions">
-      <button id="scanBtn">Scansiona incoming/</button>
       <button id="reportBtn" class="primary">Report pattern</button>
     </div>
   </header>
 
   <main class="layout">
     <section class="list-panel">
+      <div id="dropzone" class="dropzone">
+        <input type="file" id="videoInput" accept="video/mp4,.mp4" hidden />
+        <p><strong>Carica un video</strong></p>
+        <p class="dz-hint">Trascinalo qui o <button id="browseBtn" class="link-btn">scegli il file</button> — l'analisi parte da sola</p>
+        <div id="uploadProgress" class="upload-progress hidden">
+          <div class="spinner"></div>
+          <span id="uploadProgressText">Caricamento...</span>
+        </div>
+      </div>
+
       <div class="list-controls">
         <label for="sortSelect">Ordina per</label>
         <select id="sortSelect">

@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import multer from 'multer';
 import {
   listContents,
   getContentById,
@@ -9,12 +11,14 @@ import {
   upsertPlatformMetrics,
 } from './src/db.js';
 import { generateReport, engagementRate, platformGap } from './src/report.js';
-import { prepareIncoming } from './src/processVideo.js';
-import { saveAnalysis } from './src/saveAnalysis.js';
+import { ingestIncoming, ingestVideo } from './src/pipeline.js';
+import { runAnalysis } from './src/runAnalysis.js';
 import { persistDb } from './src/persist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
+const INCOMING_DIR = path.join(__dirname, 'incoming');
+const FRAMES_DIR = path.join(__dirname, 'frames');
 
 const app = express();
 app.use(express.json());
@@ -87,26 +91,74 @@ app.get('/api/report', (req, res) => {
   res.json(generateReport());
 });
 
+// Carica un video dalla pagina web: viene salvato in incoming/, preparato
+// (estrazione fotogrammi) e l'analisi visiva parte subito in background —
+// non serve nessuna azione manuale né chat con Claude Code.
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      fs.mkdirSync(INCOMING_DIR, { recursive: true });
+      cb(null, INCOMING_DIR);
+    },
+    filename: (req, file, cb) => {
+      const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, safeName);
+    },
+  }),
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!/\.mp4$/i.test(file.originalname)) {
+      return cb(new Error('Sono accettati solo file .mp4.'));
+    }
+    cb(null, true);
+  },
+});
+
+app.post('/api/upload', (req, res) => {
+  upload.single('video')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'Nessun file ricevuto (campo "video").' });
+
+    try {
+      const id = await ingestVideo(req.file.path);
+      res.json({ id, status: 'analyzing' });
+    } catch (err) {
+      fs.rmSync(req.file.path, { force: true });
+      res.status(400).json({ error: err.message });
+    }
+  });
+});
+
+// Riprova l'analisi per un contenuto in stato "analysis_failed" (i
+// fotogrammi devono essere ancora presenti su disco).
+app.post('/api/contents/:id/reanalyze', async (req, res) => {
+  const content = getContentById(req.params.id);
+  if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
+
+  const framesDir = path.join(FRAMES_DIR, content.id);
+  if (!fs.existsSync(framesDir)) {
+    return res.status(400).json({ error: 'Fotogrammi non più disponibili: ritrascina il video in incoming/.' });
+  }
+
+  updateContentFields(content.id, { status: 'analyzing' });
+  res.json(decorate(getContentById(content.id)));
+
+  runAnalysis(content.id, framesDir)
+    .then(() => persistDb(`Analisi completata: ${content.id}`))
+    .catch((err) => {
+      console.error(`✘ Nuovo tentativo fallito per ${content.id}: ${err.message}`);
+      persistDb(`Analisi fallita: ${content.id}`);
+    });
+});
+
+// Prepara e avvia l'analisi per eventuali video trascinati manualmente in
+// incoming/ (es. da un altro dispositivo/sync di cartelle).
 app.post('/api/scan', async (req, res) => {
   try {
-    const result = await prepareIncoming();
+    const result = await ingestIncoming();
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-});
-
-// Usato da Claude Code (non dall'interfaccia utente) per salvare l'analisi
-// visiva dopo aver guardato i fotogrammi estratti — vedi CLAUDE.md.
-app.post('/api/contents/:id/analysis', (req, res) => {
-  const content = getContentById(req.params.id);
-  if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
-  try {
-    saveAnalysis(req.params.id, req.body);
-    persistDb(`Salva analisi visiva: ${req.params.id}`);
-    res.json(decorate(getContentById(req.params.id)));
-  } catch (err) {
-    res.status(400).json({ error: err.message });
   }
 });
 
