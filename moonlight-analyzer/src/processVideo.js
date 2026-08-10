@@ -10,6 +10,13 @@ const ROOT = path.join(__dirname, '..');
 const PROCESSED_DIR = path.join(ROOT, 'processed');
 const FRAMES_DIR = path.join(ROOT, 'frames');
 const INCOMING_DIR = path.join(ROOT, 'incoming');
+const THUMBNAILS_DIR = path.join(ROOT, 'public', 'thumbnails');
+
+function saveThumbnail(id, framePaths) {
+  fs.mkdirSync(THUMBNAILS_DIR, { recursive: true });
+  const middleFrame = framePaths[Math.floor(framePaths.length / 2)];
+  fs.copyFileSync(middleFrame, path.join(THUMBNAILS_DIR, `${id}.jpg`));
+}
 
 function slugify(filename) {
   const base = path.basename(filename, path.extname(filename));
@@ -50,6 +57,7 @@ export async function prepareVideo(videoPath) {
   if (framePaths.length === 0) {
     throw new Error('Nessun fotogramma estratto dal video (file corrotto o vuoto?).');
   }
+  saveThumbnail(id, framePaths);
 
   const processedPath = path.join(PROCESSED_DIR, filename);
   fs.mkdirSync(PROCESSED_DIR, { recursive: true });

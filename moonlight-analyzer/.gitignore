@@ -11,3 +11,6 @@ processed/*
 !processed/.gitkeep
 *.log
 .DS_Store
+
+# public/thumbnails/ è versionata (vedi src/persist.js): sono le miniature
+# dell'archivio, piccole e utili da conservare insieme al database.

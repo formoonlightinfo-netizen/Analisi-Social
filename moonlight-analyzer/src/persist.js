@@ -5,6 +5,7 @@ import db from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_RELATIVE_PATH = path.join('moonlight-analyzer', 'data', 'contenuti.db');
+const THUMBNAILS_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'thumbnails');
 
 /**
  * Salva su GitHub il database dell'archivio dopo ogni modifica, così i dati
@@ -21,7 +22,7 @@ export function persistDb(message) {
     // forzato prima di ogni commit, altrimenti si rischia di salvare su git
     // un file .db "vecchio" mentre i dati reali restano solo sul disco locale.
     db.pragma('wal_checkpoint(TRUNCATE)');
-    execFileSync('git', ['add', DB_RELATIVE_PATH], opts);
+    execFileSync('git', ['add', DB_RELATIVE_PATH, THUMBNAILS_RELATIVE_PATH], opts);
     const diff = execFileSync('git', ['diff', '--cached', '--name-only'], opts).toString().trim();
     if (!diff) return; // nessuna modifica reale (es. solo timestamp WAL)
     execFileSync('git', ['commit', '-m', message], opts);

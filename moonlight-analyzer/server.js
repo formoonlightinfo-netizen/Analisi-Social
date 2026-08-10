@@ -10,6 +10,7 @@ import {
   updateContentFields,
   upsertPlatformMetrics,
   contentExistsByFilename,
+  deleteContent,
 } from './src/db.js';
 import { generateReport, engagementRate, platformGap } from './src/report.js';
 import { ingestIncoming, ingestVideo } from './src/pipeline.js';
@@ -21,6 +22,7 @@ const PORT = process.env.PORT || 3000;
 const INCOMING_DIR = path.join(__dirname, 'incoming');
 const FRAMES_DIR = path.join(__dirname, 'frames');
 const PROCESSED_DIR = path.join(__dirname, 'processed');
+const THUMBNAILS_DIR = path.join(__dirname, 'public', 'thumbnails');
 
 const app = express();
 app.use(express.json());
@@ -84,6 +86,23 @@ app.post('/api/contents/:id/rename', (req, res) => {
   updateContentFields(content.id, updates);
   persistDb(`Rinomina file: ${content.id} -> ${newFilename}`);
   res.json(decorate(getContentById(content.id)));
+});
+
+// Elimina definitivamente un contenuto: riga nel database (e metriche
+// collegate), video in processed/, miniatura, eventuali fotogrammi rimasti.
+app.delete('/api/contents/:id', (req, res) => {
+  const content = getContentById(req.params.id);
+  if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
+
+  if (content.processed_path && fs.existsSync(content.processed_path)) {
+    fs.rmSync(content.processed_path, { force: true });
+  }
+  fs.rmSync(path.join(THUMBNAILS_DIR, `${content.id}.jpg`), { force: true });
+  fs.rmSync(path.join(FRAMES_DIR, content.id), { recursive: true, force: true });
+
+  deleteContent(content.id);
+  persistDb(`Elimina contenuto: ${content.id}`);
+  res.json({ ok: true });
 });
 
 const NUMERIC_FIELDS = ['likes', 'comments', 'shares', 'saves', 'reposts', 'reach'];

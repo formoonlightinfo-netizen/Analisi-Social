@@ -141,6 +141,16 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
 .badge.gap-analyzing { background: var(--accent-soft); color: var(--accent); }
 .badge.gap-failed { background: var(--bad-soft); color: var(--bad); }
 
+.archive-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.archive-title .section-title { margin: 0; }
+.archive-count { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+
 .list-controls {
   display: flex;
   align-items: center;
@@ -174,6 +184,16 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
 .content-item:hover { background: var(--panel-2); }
 .content-item.active { background: var(--panel-3); border-color: var(--accent); }
 
+.content-item-row { display: flex; gap: 10px; align-items: center; }
+.content-item .thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--panel-3);
+  flex-shrink: 0;
+}
+.content-item-info { min-width: 0; flex: 1; }
 .content-item .filename { font-weight: 600; font-size: 13.5px; word-break: break-word; }
 .content-item .meta { font-size: 11.5px; color: var(--text-dim); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -202,9 +222,17 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
 
 .detail-header {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
   margin-bottom: 6px;
+}
+.detail-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--panel-3);
+  flex-shrink: 0;
 }
 .detail-panel h2 {
   margin: 0;

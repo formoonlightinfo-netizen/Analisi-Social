@@ -114,6 +114,7 @@ function sortedContents() {
 
 function renderList() {
   const list = sortedContents();
+  document.getElementById('archiveCount').textContent = `${state.contents.length} video`;
   listEl.innerHTML = '';
   if (list.length === 0) {
     listEl.innerHTML = '<li class="placeholder">Nessun contenuto ancora. Carica un video qui sopra per iniziare.</li>';
@@ -130,8 +131,13 @@ function renderList() {
       : '';
     const statusBadge = STATUS_BADGES[content.status] || '';
     li.innerHTML = `
-      <div class="filename">${content.caption?.slice(0, 60) || content.filename}</div>
-      <div class="meta">${statusBadge}${hookBadge}${gapBadge}</div>
+      <div class="content-item-row">
+        <img class="thumb" src="/thumbnails/${content.id}.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="content-item-info">
+          <div class="filename">${content.caption?.slice(0, 60) || content.filename}</div>
+          <div class="meta">${statusBadge}${hookBadge}${gapBadge}</div>
+        </div>
+      </div>
     `;
     li.addEventListener('click', () => selectContent(content.id));
     listEl.appendChild(li);
@@ -155,7 +161,11 @@ function renderDetail(content) {
   const gap = content.gap;
 
   detailEl.innerHTML = `
-    <div class="detail-header"><h2>${content.filename}</h2></div>
+    <div class="detail-header">
+      <img class="detail-thumb" src="/thumbnails/${content.id}.jpg" alt="" onerror="this.style.display='none'" />
+      <h2>${content.filename}</h2>
+      <button id="deleteBtn" class="danger icon-btn">Elimina</button>
+    </div>
     <div class="rename-row">
       <input id="filenameInput" value="${content.filename}" />
       <button id="renameBtn">Rinomina</button>
@@ -210,11 +220,25 @@ function renderDetail(content) {
   `;
 
   document.getElementById('renameBtn').addEventListener('click', () => renameContent(content.id));
+  document.getElementById('deleteBtn').addEventListener('click', () => deleteContentConfirm(content.id, content.filename));
   document.getElementById('saveCaptionBtn').addEventListener('click', () => saveCaption(content.id));
   for (const platform of ['instagram', 'tiktok']) {
     document.getElementById(`save-${platform}`)?.addEventListener('click', () => saveMetrics(content.id, platform));
   }
   document.getElementById('retryBtn')?.addEventListener('click', () => retryAnalysis(content.id));
+}
+
+async function deleteContentConfirm(id, filename) {
+  if (!confirm(`Eliminare definitivamente "${filename}"? Non si può annullare.`)) return;
+  try {
+    await api(`/api/contents/${id}`, { method: 'DELETE' });
+    toast('Contenuto eliminato.');
+    state.selectedId = null;
+    detailEl.innerHTML = '<p class="placeholder">Seleziona un contenuto dalla lista per vedere i dettagli.</p>';
+    await loadContents();
+  } catch (err) {
+    toast(err.message, true);
+  }
 }
 
 async function retryAnalysis(id) {

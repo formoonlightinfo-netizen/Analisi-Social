@@ -128,4 +128,8 @@ export function contentExistsByFilename(filename) {
   return db.prepare('SELECT id FROM contents WHERE filename = ?').get(filename);
 }
 
+export function deleteContent(id) {
+  db.prepare('DELETE FROM contents WHERE id = ?').run(id);
+}
+
 export default db;
