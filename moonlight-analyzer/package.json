@@ -7,11 +7,11 @@
   "scripts": {
     "start": "node server.js",
     "watch": "node src/watcher.js",
-    "scan": "node src/scanIncoming.js",
+    "prepare-videos": "node src/prepareIncoming.js",
+    "pending": "node src/listPending.js",
     "report": "node src/reportCli.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "better-sqlite3": "^11.5.0",
     "chokidar": "^4.0.1",
     "dotenv": "^16.4.5",

@@ -9,7 +9,8 @@ import {
   upsertPlatformMetrics,
 } from './src/db.js';
 import { generateReport, engagementRate, platformGap } from './src/report.js';
-import { scanIncoming } from './src/processVideo.js';
+import { prepareIncoming } from './src/processVideo.js';
+import { saveAnalysis } from './src/saveAnalysis.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -85,10 +86,23 @@ app.get('/api/report', (req, res) => {
 
 app.post('/api/scan', async (req, res) => {
   try {
-    const result = await scanIncoming();
+    const result = await prepareIncoming();
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Usato da Claude Code (non dall'interfaccia utente) per salvare l'analisi
+// visiva dopo aver guardato i fotogrammi estratti — vedi CLAUDE.md.
+app.post('/api/contents/:id/analysis', (req, res) => {
+  const content = getContentById(req.params.id);
+  if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
+  try {
+    saveAnalysis(req.params.id, req.body);
+    res.json(decorate(getContentById(req.params.id)));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

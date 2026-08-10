@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { getDurationSeconds, extractFrames, cleanupFrames } from './ffmpeg.js';
-import { analyzeFrames } from './analyzer.js';
+import { getDurationSeconds, extractFrames } from './ffmpeg.js';
 import { insertContent, contentExistsByFilename } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PROCESSED_DIR = path.join(ROOT, 'processed');
 const FRAMES_DIR = path.join(ROOT, 'frames');
+const INCOMING_DIR = path.join(ROOT, 'incoming');
 
 function slugify(filename) {
   const base = path.basename(filename, path.extname(filename));
@@ -27,12 +27,15 @@ function makeContentId(filename) {
 }
 
 /**
- * Elabora un video appena arrivato in incoming/: estrae fotogrammi, chiama l'analisi
- * visiva, salva la voce nel database e sposta il file in processed/.
+ * Prepara un video appena arrivato in incoming/: estrae durata e fotogrammi
+ * (lasciandoli su disco), crea una riga "pending_analysis" nel database e
+ * sposta il video in processed/. L'analisi visiva vera e propria la fa poi
+ * Claude Code guardando i fotogrammi (vedi CLAUDE.md) — qui non si chiama
+ * nessuna API a pagamento.
  * @param {string} videoPath - path assoluto del file .mp4 in incoming/
- * @returns {Promise<string>} l'id del contenuto creato
+ * @returns {Promise<{ id: string, framesDir: string, frameCount: number, durationSec: number|null }>}
  */
-export async function processVideo(videoPath) {
+export async function prepareVideo(videoPath) {
   const filename = path.basename(videoPath);
 
   if (contentExistsByFilename(filename)) {
@@ -42,17 +45,10 @@ export async function processVideo(videoPath) {
   const id = makeContentId(filename);
   const framesDir = path.join(FRAMES_DIR, id);
 
-  let analysis;
-  let durationSec;
-  try {
-    durationSec = await getDurationSeconds(videoPath);
-    const framePaths = await extractFrames(videoPath, framesDir);
-    if (framePaths.length === 0) {
-      throw new Error('Nessun fotogramma estratto dal video (file corrotto o vuoto?).');
-    }
-    analysis = await analyzeFrames(framePaths, { durationSec });
-  } finally {
-    cleanupFrames(framesDir);
+  const durationSec = await getDurationSeconds(videoPath);
+  const framePaths = await extractFrames(videoPath, framesDir);
+  if (framePaths.length === 0) {
+    throw new Error('Nessun fotogramma estratto dal video (file corrotto o vuoto?).');
   }
 
   const processedPath = path.join(PROCESSED_DIR, filename);
@@ -64,45 +60,45 @@ export async function processVideo(videoPath) {
     filename,
     processed_path: processedPath,
     duration_sec: durationSec,
-    status: 'analyzed',
-    hook_type: analysis.hook_type ?? null,
-    text_layering: analysis.text_layering ?? null,
-    image_text_coherence: analysis.image_text_coherence ?? null,
-    coherence_score: analysis.coherence_score ?? null,
-    format: analysis.format ?? null,
-    editing_style: analysis.editing_style ? JSON.stringify(analysis.editing_style) : null,
-    pacing: analysis.pacing ?? null,
-    analysis_notes: analysis.notes ?? null,
-    analysis_raw: JSON.stringify(analysis),
-    analyzed_at: new Date().toISOString(),
+    status: 'pending_analysis',
+    hook_type: null,
+    text_layering: null,
+    image_text_coherence: null,
+    coherence_score: null,
+    format: null,
+    editing_style: null,
+    pacing: null,
+    analysis_notes: null,
+    analysis_raw: null,
+    analyzed_at: null,
   });
 
-  return id;
+  return { id, framesDir, frameCount: framePaths.length, durationSec };
 }
 
 /**
- * Scansiona la cartella incoming/ ed elabora tutti i video .mp4 trovati, in sequenza.
- * @returns {Promise<{ processed: string[], errors: {file: string, error: string}[] }>}
+ * Scansiona incoming/ e prepara (estrazione fotogrammi, nessuna analisi) tutti
+ * i video .mp4 trovati.
+ * @returns {Promise<{ prepared: object[], errors: {file: string, error: string}[] }>}
  */
-export async function scanIncoming() {
-  const INCOMING_DIR = path.join(ROOT, 'incoming');
+export async function prepareIncoming() {
   fs.mkdirSync(INCOMING_DIR, { recursive: true });
   const files = fs
     .readdirSync(INCOMING_DIR)
     .filter((f) => f.toLowerCase().endsWith('.mp4'));
 
-  const processed = [];
+  const prepared = [];
   const errors = [];
 
   for (const file of files) {
     const fullPath = path.join(INCOMING_DIR, file);
     try {
-      const id = await processVideo(fullPath);
-      processed.push(id);
+      const result = await prepareVideo(fullPath);
+      prepared.push({ filename: file, ...result });
     } catch (err) {
       errors.push({ file, error: err.message });
     }
   }
 
-  return { processed, errors };
+  return { prepared, errors };
 }

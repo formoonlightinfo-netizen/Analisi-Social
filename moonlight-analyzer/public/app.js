@@ -87,9 +87,12 @@ function renderList() {
     const hookBadge = content.hook_type
       ? `<span class="badge neutral">${HOOK_LABELS[content.hook_type] || content.hook_type}</span>`
       : '';
+    const pendingBadge = content.status === 'pending_analysis'
+      ? '<span class="badge gap-alto">in attesa di analisi</span>'
+      : '';
     li.innerHTML = `
       <div class="filename">${content.caption?.slice(0, 60) || content.filename}</div>
-      <div class="meta">${hookBadge}${gapBadge}</div>
+      <div class="meta">${pendingBadge}${hookBadge}${gapBadge}</div>
     `;
     li.addEventListener('click', () => selectContent(content.id));
     listEl.appendChild(li);
@@ -126,8 +129,14 @@ function renderDetail(content) {
     </div>
     <div class="save-row"><button id="saveCaptionBtn" class="primary">Salva caption/categoria</button></div>
 
+    ${content.status === 'pending_analysis' ? `
     <div class="analysis-card">
-      <h3>Analisi visiva automatica</h3>
+      <h3>Analisi visiva</h3>
+      <p class="placeholder">In attesa di analisi — apri una chat con Claude Code su questo progetto e chiedi di analizzare i video in sospeso (i fotogrammi sono già pronti).</p>
+    </div>
+    ` : `
+    <div class="analysis-card">
+      <h3>Analisi visiva</h3>
       <div class="analysis-row"><span class="k">Durata</span><span class="v">${content.duration_sec ? content.duration_sec.toFixed(1) + 's' : '—'}</span></div>
       <div class="analysis-row"><span class="k">Hook</span><span class="v">${HOOK_LABELS[content.hook_type] || content.hook_type || '—'}</span></div>
       <div class="analysis-row"><span class="k">Testo a strati</span><span class="v">${content.text_layering || '—'}</span></div>
@@ -140,6 +149,7 @@ function renderDetail(content) {
       <div class="analysis-row"><span class="k">Pacing</span><span class="v">${content.pacing || '—'}</span></div>
       <div class="analysis-row"><span class="k">Note</span><span class="v">${content.analysis_notes || '—'}</span></div>
     </div>
+    `}
 
     <div class="grid-2">
       ${['instagram', 'tiktok'].map((platform) => platformForm(content, platform)).join('')}
