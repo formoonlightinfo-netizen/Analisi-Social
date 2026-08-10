@@ -82,6 +82,7 @@ Analisi-Social/
 - `GET /api/contents` — lista contenuti con metriche ed engagement calcolato
 - `GET /api/contents/:id` — dettaglio di un contenuto
 - `PATCH /api/contents/:id` — aggiorna caption/categoria
+- `POST /api/contents/:id/rename` — rinomina il file (anche il file .mp4 su disco, se ancora presente)
 - `POST /api/contents/:id/metrics` — inserisce/aggiorna le metriche di una piattaforma (`platform: "instagram" | "tiktok"`)
 - `POST /api/contents/:id/reanalyze` — ripete l'analisi se era fallita
 - `GET /api/report` — report aggregato dei pattern (anche da riga di comando con `npm run report`)

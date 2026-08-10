@@ -148,9 +148,14 @@ function renderDetail(content) {
   const gap = content.gap;
 
   detailEl.innerHTML = `
-    <h2>${content.filename}</h2>
+    <div class="detail-header"><h2>${content.filename}</h2></div>
+    <div class="rename-row">
+      <input id="filenameInput" value="${content.filename}" />
+      <button id="renameBtn">Rinomina</button>
+    </div>
     ${gap ? `<p><span class="badge gap-${gap.level}">Divario piattaforme: ${gap.level} (${pct(gap.relative_gap)}) — meglio su ${gap.better_platform}</span></p>` : ''}
 
+    <p class="section-title">Caption &amp; categoria</p>
     <div class="field-block">
       <label>Caption (condivisa)</label>
       <textarea id="captionInput">${content.caption || ''}</textarea>
@@ -175,25 +180,29 @@ function renderDetail(content) {
     ` : `
     <div class="analysis-card">
       <h3>Analisi visiva</h3>
-      <div class="analysis-row"><span class="k">Durata</span><span class="v">${content.duration_sec ? content.duration_sec.toFixed(1) + 's' : '—'}</span></div>
-      <div class="analysis-row"><span class="k">Hook</span><span class="v">${HOOK_LABELS[content.hook_type] || content.hook_type || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Testo a strati</span><span class="v">${content.text_layering || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Coerenza immagine/testo</span><span class="v">${content.image_text_coherence || '—'} (${content.coherence_score ?? '—'}/5)</span></div>
-      <div class="analysis-row"><span class="k">Formato</span><span class="v">${FORMAT_LABELS[content.format] || content.format || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Ritmo tagli</span><span class="v">${editing.ritmo_tagli || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Zoom/transizioni</span><span class="v">${editing.zoom_transizioni || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Stile testo overlay</span><span class="v">${editing.stile_testo_overlay || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Coerenza editing/tono</span><span class="v">${editing.coerenza_editing_tono || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Pacing</span><span class="v">${content.pacing || '—'}</span></div>
-      <div class="analysis-row"><span class="k">Note</span><span class="v">${content.analysis_notes || '—'}</span></div>
+      <div class="analysis-grid">
+        <div class="analysis-tile"><span class="k">Durata</span><span class="v">${content.duration_sec ? content.duration_sec.toFixed(1) + 's' : '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Formato</span><span class="v">${FORMAT_LABELS[content.format] || content.format || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Hook</span><span class="v">${HOOK_LABELS[content.hook_type] || content.hook_type || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Testo a strati</span><span class="v">${content.text_layering || '—'}</span></div>
+        <div class="analysis-tile span-2"><span class="k">Coerenza immagine/testo (${content.coherence_score ?? '—'}/5)</span><span class="v">${content.image_text_coherence || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Ritmo tagli</span><span class="v">${editing.ritmo_tagli || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Zoom/transizioni</span><span class="v">${editing.zoom_transizioni || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Stile testo overlay</span><span class="v">${editing.stile_testo_overlay || '—'}</span></div>
+        <div class="analysis-tile"><span class="k">Coerenza editing/tono</span><span class="v">${editing.coerenza_editing_tono || '—'}</span></div>
+        <div class="analysis-tile span-2"><span class="k">Pacing</span><span class="v">${content.pacing || '—'}</span></div>
+        <div class="analysis-tile span-2"><span class="k">Note</span><span class="v">${content.analysis_notes || '—'}</span></div>
+      </div>
     </div>
     `}
 
+    <p class="section-title">Metriche per piattaforma</p>
     <div class="grid-2">
       ${['instagram', 'tiktok'].map((platform) => platformForm(content, platform)).join('')}
     </div>
   `;
 
+  document.getElementById('renameBtn').addEventListener('click', () => renameContent(content.id));
   document.getElementById('saveCaptionBtn').addEventListener('click', () => saveCaption(content.id));
   for (const platform of ['instagram', 'tiktok']) {
     document.getElementById(`save-${platform}`)?.addEventListener('click', () => saveMetrics(content.id, platform));
@@ -232,6 +241,22 @@ function platformForm(content, platform) {
       <div class="save-row"><button id="save-${platform}" class="primary">Salva ${label}</button></div>
     </div>
   `;
+}
+
+async function renameContent(id) {
+  const newFilename = document.getElementById('filenameInput').value.trim();
+  if (!newFilename) {
+    toast('Il nome non può essere vuoto.', true);
+    return;
+  }
+  try {
+    await api(`/api/contents/${id}/rename`, { method: 'POST', body: { filename: newFilename } });
+    toast('File rinominato.');
+    await loadContents();
+    await selectContent(id);
+  } catch (err) {
+    toast(err.message, true);
+  }
 }
 
 async function saveCaption(id) {

@@ -9,6 +9,7 @@ import {
   getContentById,
   updateContentFields,
   upsertPlatformMetrics,
+  contentExistsByFilename,
 } from './src/db.js';
 import { generateReport, engagementRate, platformGap } from './src/report.js';
 import { ingestIncoming, ingestVideo } from './src/pipeline.js';
@@ -19,6 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const INCOMING_DIR = path.join(__dirname, 'incoming');
 const FRAMES_DIR = path.join(__dirname, 'frames');
+const PROCESSED_DIR = path.join(__dirname, 'processed');
 
 const app = express();
 app.use(express.json());
@@ -55,6 +57,33 @@ app.patch('/api/contents/:id', (req, res) => {
   updateContentFields(req.params.id, fields);
   persistDb(`Aggiorna caption/categoria: ${req.params.id}`);
   res.json(decorate(getContentById(req.params.id)));
+});
+
+// Rinomina il file di un contenuto (nome mostrato in lista/dettaglio, e il
+// file .mp4 in processed/ se ancora presente).
+app.post('/api/contents/:id/rename', (req, res) => {
+  const content = getContentById(req.params.id);
+  if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
+
+  let newFilename = String(req.body.filename || '').trim();
+  if (!newFilename) return res.status(400).json({ error: 'Il nome non può essere vuoto.' });
+  newFilename = path.basename(newFilename).replace(/[^a-zA-Z0-9._\- ]/g, '_');
+  if (!/\.mp4$/i.test(newFilename)) newFilename += '.mp4';
+
+  if (newFilename !== content.filename && contentExistsByFilename(newFilename)) {
+    return res.status(409).json({ error: `Esiste già un contenuto chiamato "${newFilename}".` });
+  }
+
+  const updates = { filename: newFilename };
+  if (content.processed_path && fs.existsSync(content.processed_path)) {
+    const newPath = path.join(PROCESSED_DIR, newFilename);
+    fs.renameSync(content.processed_path, newPath);
+    updates.processed_path = newPath;
+  }
+
+  updateContentFields(content.id, updates);
+  persistDb(`Rinomina file: ${content.id} -> ${newFilename}`);
+  res.json(decorate(getContentById(content.id)));
 });
 
 const NUMERIC_FIELDS = ['likes', 'comments', 'shares', 'saves', 'reposts', 'reach'];
