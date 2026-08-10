@@ -79,8 +79,15 @@ function ensurePolling() {
   if (pollTimer) return;
   pollTimer = setTimeout(async () => {
     pollTimer = null;
+    const selectedBefore = state.contents.find((c) => c.id === state.selectedId);
+    const wasTransient = selectedBefore && (selectedBefore.status === 'analyzing' || selectedBefore.status === 'pending_analysis');
     await loadContents();
-    if (state.selectedId) {
+    // Non tocchiamo il pannello di dettaglio se l'utente lo ha aperto e non
+    // sta cambiando stato in questo momento: eviterebbe di cancellare
+    // caption/metriche/nome che sta scrivendo. Lo aggiorniamo solo se il
+    // contenuto selezionato era "in analisi" (per mostrare il risultato
+    // appena pronto).
+    if (state.selectedId && wasTransient) {
       const stillThere = state.contents.find((c) => c.id === state.selectedId);
       if (stillThere) await selectContent(state.selectedId);
     }
