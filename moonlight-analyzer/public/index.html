@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moonlight Content Analyzer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🌙 Moonlight Content Analyzer</h1>
+    <div class="actions">
+      <button id="scanBtn">Scansiona incoming/</button>
+      <button id="reportBtn" class="primary">Report pattern</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="list-panel">
+      <div class="list-controls">
+        <label for="sortSelect">Ordina per</label>
+        <select id="sortSelect">
+          <option value="date">Data (più recenti)</option>
+          <option value="engagement">Engagement aggregato</option>
+          <option value="gap">Divario piattaforme</option>
+        </select>
+      </div>
+      <ul id="contentList" class="content-list"></ul>
+    </section>
+
+    <section id="detailPanel" class="detail-panel">
+      <p class="placeholder">Seleziona un contenuto dalla lista per vedere i dettagli.</p>
+    </section>
+  </main>
+
+  <div id="reportOverlay" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h2>Report pattern</h2>
+        <button id="closeReport">✕</button>
+      </div>
+      <div id="reportBody" class="overlay-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

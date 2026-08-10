@@ -1,0 +1,14 @@
+node_modules/
+.env
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+frames/*
+!frames/.gitkeep
+incoming/*
+!incoming/.gitkeep
+processed/*
+!processed/.gitkeep
+*.log
+.DS_Store
