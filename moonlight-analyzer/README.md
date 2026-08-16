@@ -44,9 +44,26 @@ Apri [http://localhost:3000](http://localhost:3000). Da lì carichi i video, ins
 
 Ogni volta che carichi un video, salvi metriche o l'analisi finisce, l'app salva da sola l'archivio (`data/contenuti.db`) su GitHub, così i dati sopravvivono anche se una sessione cloud si chiude. I video originali e i fotogrammi temporanei invece NON vengono conservati a lungo termine (non servono più una volta fatta l'analisi) — se un'analisi resta bloccata a metà per un reset imprevisto, basta ricaricare il video.
 
-## 6. Accesso da telefono
+## 6. Accesso protetto da password
 
-Apri una sessione di Claude Code dall'app mobile su questo progetto, avvia il server (`npm start`) e usa il link di anteprima che ti mostra l'app per raggiungere l'interfaccia — da lì carichi video e inserisci dati come da computer.
+L'app chiede nome utente e password prima di mostrare qualsiasi cosa (utile perché può essere raggiungibile anche da fuori il tuo computer, vedi sotto). Le credenziali di default sono:
+
+- Utente: `helga`
+- Password: `moonlight2026`
+
+**Cambiale**: crea un file `.env` (copia `.env.example`) nella cartella `moonlight-analyzer` e imposta `AUTH_USER` e `AUTH_PASSWORD` con valori tuoi.
+
+## 7. Accesso da telefono / altri dispositivi
+
+Il modo più semplice è esporre l'app con un link pubblico fisso tramite [ngrok](https://ngrok.com) (gratuito): crei un account, installi `ngrok` (`brew install ngrok`), colleghi il tuo account (`ngrok config add-authtoken ...`), e lanci:
+
+```bash
+ngrok http 3000
+```
+
+Ti dà un indirizzo tipo `https://xxxx.ngrok-free.app` raggiungibile da qualsiasi dispositivo — protetto dalla password dell'app (punto 6). Con un account ngrok gratuito puoi anche riservare un dominio fisso così il link non cambia ogni volta.
+
+Sul telefono, apri quel link nel browser e scegli "Aggiungi alla schermata Home" (Safari) o "Installa app" (Chrome): diventa un'icona vera, si apre a schermo intero come un'app normale.
 
 ## 7. Struttura del progetto
 

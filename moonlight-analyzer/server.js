@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import multer from 'multer';
@@ -24,7 +25,33 @@ const FRAMES_DIR = path.join(__dirname, 'frames');
 const PROCESSED_DIR = path.join(__dirname, 'processed');
 const THUMBNAILS_DIR = path.join(__dirname, 'public', 'thumbnails');
 
+// Protezione con nome utente/password: necessaria perché l'app può essere
+// esposta con un link pubblico (es. ngrok) e non ha altro tipo di accesso.
+// Cambia AUTH_USER / AUTH_PASSWORD in .env per personalizzarli.
+const AUTH_USER = process.env.AUTH_USER || 'helga';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'moonlight2026';
+
+function safeEqual(a, b) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (header?.startsWith('Basic ')) {
+    const [user, password] = Buffer.from(header.slice(6), 'base64').toString().split(':');
+    if (user && password && safeEqual(user, AUTH_USER) && safeEqual(password, AUTH_PASSWORD)) {
+      return next();
+    }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Moonlight Content Analyzer"');
+  res.status(401).send('Accesso richiesto.');
+}
+
 const app = express();
+app.use(requireAuth);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
