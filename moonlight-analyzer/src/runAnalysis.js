@@ -1,9 +1,22 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import os from 'node:os';
+import path from 'node:path';
 import { saveAnalysis } from './saveAnalysis.js';
 import { updateContentFields } from './db.js';
 
 const execFileAsync = promisify(execFile);
+
+// Quando il server gira come servizio di sistema (es. LaunchAgent su macOS),
+// il PATH ereditato è minimo e spesso non include dove `claude` è installato
+// (es. ~/.local/bin per l'installer nativo). Li aggiungiamo esplicitamente
+// per non dipendere dalla configurazione del servizio che avvia il server.
+const EXTRA_PATH_DIRS = [
+  path.join(os.homedir(), '.local', 'bin'),
+  path.join(os.homedir(), 'bin'),
+  '/opt/homebrew/bin',
+  '/usr/local/bin',
+];
 
 const ANALYSIS_PROMPT = `Sei un analista esperto di contenuti video per social media (Instagram Reels e TikTok), specializzato in contenuti di coaching spirituale e arti occulte. Guarda con lo strumento Read, in ordine, tutti i fotogrammi .jpg presenti in questa cartella (sono estratti a circa 1 al secondo da uno stesso video già pubblicato, con testo/sottotitoli in overlay come appaiono nel post reale). Poi rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza altro testo prima o dopo, con questa struttura esatta:
 
@@ -46,6 +59,11 @@ export async function runAnalysis(id, framesDir) {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (key.startsWith('CLAUDE_CODE_') || key === 'CLAUDECODE') delete env[key];
+  }
+  const existingPathDirs = new Set((env.PATH || '').split(path.delimiter));
+  const missingDirs = EXTRA_PATH_DIRS.filter((dir) => !existingPathDirs.has(dir));
+  if (missingDirs.length > 0) {
+    env.PATH = [...missingDirs, env.PATH || ''].filter(Boolean).join(path.delimiter);
   }
 
   try {
