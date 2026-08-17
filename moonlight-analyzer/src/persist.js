@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
@@ -6,6 +7,8 @@ import db from './db.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_RELATIVE_PATH = path.join('moonlight-analyzer', 'data', 'contenuti.db');
 const THUMBNAILS_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'thumbnails');
+const ICONS_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'icons');
+const LOGO_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'logo.png');
 
 /**
  * Salva su GitHub il database dell'archivio dopo ogni modifica, così i dati
@@ -22,7 +25,11 @@ export function persistDb(message) {
     // forzato prima di ogni commit, altrimenti si rischia di salvare su git
     // un file .db "vecchio" mentre i dati reali restano solo sul disco locale.
     db.pragma('wal_checkpoint(TRUNCATE)');
-    execFileSync('git', ['add', DB_RELATIVE_PATH, THUMBNAILS_RELATIVE_PATH], opts);
+    // git add fallisce (ed esce senza aggiungere nulla) se anche un solo
+    // pathspec non esiste — logo.png è opzionale, va incluso solo se c'è.
+    const paths = [DB_RELATIVE_PATH, THUMBNAILS_RELATIVE_PATH, ICONS_RELATIVE_PATH];
+    if (fs.existsSync(path.join(repoRoot, LOGO_RELATIVE_PATH))) paths.push(LOGO_RELATIVE_PATH);
+    execFileSync('git', ['add', ...paths], opts);
     const diff = execFileSync('git', ['diff', '--cached', '--name-only'], opts).toString().trim();
     if (!diff) return; // nessuna modifica reale (es. solo timestamp WAL)
     execFileSync('git', ['commit', '-m', message], opts);

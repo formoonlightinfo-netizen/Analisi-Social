@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 3000;
 const INCOMING_DIR = path.join(__dirname, 'incoming');
 const FRAMES_DIR = path.join(__dirname, 'frames');
 const PROCESSED_DIR = path.join(__dirname, 'processed');
+const ICONS_DIR = path.join(__dirname, 'public', 'icons');
 const THUMBNAILS_DIR = path.join(__dirname, 'public', 'thumbnails');
 
 // Protezione con nome utente/password: necessaria perché l'app può essere
@@ -53,7 +54,7 @@ function requireAuth(req, res, next) {
 
 const app = express();
 app.use(requireAuth);
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function decorate(content) {
@@ -176,6 +177,30 @@ app.post('/api/ask', async (req, res) => {
   try {
     const answer = await askClaude(question);
     res.json({ answer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Salva le icone dell'app generate dalla paginetta public/tools/generate-icons.html
+// (logo dell'utente composto su sfondo blu, fatto interamente nel browser).
+const VALID_ICON_SIZES = ['32', '180', '192', '512'];
+
+app.post('/api/generate-icons', (req, res) => {
+  const sizes = req.body.sizes || {};
+  try {
+    fs.mkdirSync(ICONS_DIR, { recursive: true });
+    let saved = 0;
+    for (const size of VALID_ICON_SIZES) {
+      const dataUrl = sizes[size];
+      if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) continue;
+      const base64 = dataUrl.slice('data:image/png;base64,'.length);
+      fs.writeFileSync(path.join(ICONS_DIR, `icon-${size}.png`), Buffer.from(base64, 'base64'));
+      saved++;
+    }
+    if (saved === 0) return res.status(400).json({ error: 'Nessuna icona valida ricevuta.' });
+    persistDb(`Aggiorna icone app (${saved})`);
+    res.json({ saved });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
