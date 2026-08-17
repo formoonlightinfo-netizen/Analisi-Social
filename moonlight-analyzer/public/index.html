@@ -17,6 +17,7 @@
   <header class="topbar">
     <h1><img src="logo.png" alt="" class="brand-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'" /><span class="brand-fallback">🌙</span> Moonlight Content Analyzer</h1>
     <div class="actions">
+      <button id="askBtn">Chiedi a Claude</button>
       <button id="reportBtn" class="primary">Report pattern</button>
     </div>
   </header>
@@ -60,6 +61,27 @@
         <button id="closeReport">✕</button>
       </div>
       <div id="reportBody" class="overlay-body"></div>
+    </div>
+  </div>
+
+  <div id="askOverlay" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h2>Chiedi a Claude</h2>
+        <button id="closeAsk">✕</button>
+      </div>
+      <div class="overlay-body">
+        <p class="placeholder">Claude guarda tutto il tuo archivio (caption, analisi visiva, metriche) e risponde basandosi sui pattern reali — es. "aiutami a scrivere un hook simile ai video che vanno meglio", "che formato dovrei usare per un video su X?".</p>
+        <div class="field-block">
+          <textarea id="askInput" placeholder="Scrivi la tua domanda..." rows="3"></textarea>
+        </div>
+        <div class="save-row"><button id="askSubmitBtn" class="primary">Chiedi</button></div>
+        <div id="askLoading" class="upload-progress hidden">
+          <div class="spinner"></div>
+          <span>Claude sta guardando l'archivio... di solito 30-60 secondi</span>
+        </div>
+        <div id="askAnswer" class="ask-answer"></div>
+      </div>
     </div>
   </div>
 

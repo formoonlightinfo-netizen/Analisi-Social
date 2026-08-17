@@ -16,6 +16,7 @@ import {
 import { generateReport, engagementRate, platformGap } from './src/report.js';
 import { ingestIncoming, ingestVideo } from './src/pipeline.js';
 import { runAnalysis } from './src/runAnalysis.js';
+import { askClaude } from './src/askClaude.js';
 import { persistDb } from './src/persist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -164,6 +165,20 @@ app.post('/api/contents/:id/metrics', (req, res) => {
 
 app.get('/api/report', (req, res) => {
   res.json(generateReport());
+});
+
+// Chiede a Claude Code (headless, stesso meccanismo gratuito dell'analisi
+// video) di guardare l'intero archivio e rispondere a una domanda libera —
+// es. idee per nuovi contenuti basate sui pattern reali di performance.
+app.post('/api/ask', async (req, res) => {
+  const question = String(req.body.question || '').trim();
+  if (!question) return res.status(400).json({ error: 'Scrivi una domanda.' });
+  try {
+    const answer = await askClaude(question);
+    res.json({ answer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Carica un video dalla pagina web: viene salvato in incoming/, preparato

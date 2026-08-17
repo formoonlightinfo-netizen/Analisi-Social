@@ -399,6 +399,37 @@ document.getElementById('reportBtn').addEventListener('click', async () => {
 });
 document.getElementById('closeReport').addEventListener('click', () => reportOverlay.classList.add('hidden'));
 
+const askOverlay = document.getElementById('askOverlay');
+const askInput = document.getElementById('askInput');
+const askLoading = document.getElementById('askLoading');
+const askAnswer = document.getElementById('askAnswer');
+const askSubmitBtn = document.getElementById('askSubmitBtn');
+
+document.getElementById('askBtn').addEventListener('click', () => {
+  askOverlay.classList.remove('hidden');
+});
+document.getElementById('closeAsk').addEventListener('click', () => askOverlay.classList.add('hidden'));
+
+askSubmitBtn.addEventListener('click', async () => {
+  const question = askInput.value.trim();
+  if (!question) {
+    toast('Scrivi prima una domanda.', true);
+    return;
+  }
+  askLoading.classList.remove('hidden');
+  askAnswer.textContent = '';
+  askSubmitBtn.disabled = true;
+  try {
+    const { answer } = await api('/api/ask', { method: 'POST', body: { question } });
+    askAnswer.textContent = answer;
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    askLoading.classList.add('hidden');
+    askSubmitBtn.disabled = false;
+  }
+});
+
 function groupTable(title, rows, keyLabel) {
   if (rows.length === 0) return `<h3>${title}</h3><p class="placeholder">Nessun dato sufficiente.</p>`;
   return `
