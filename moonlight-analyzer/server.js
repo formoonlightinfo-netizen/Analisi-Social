@@ -14,8 +14,8 @@ import {
   deleteContent,
 } from './src/db.js';
 import { generateReport, engagementRate, platformGap } from './src/report.js';
-import { ingestIncoming, ingestVideo } from './src/pipeline.js';
-import { runAnalysis } from './src/runAnalysis.js';
+import { ingestIncoming, ingestVideo, ingestCarousel } from './src/pipeline.js';
+import { runAnalysis, runCarouselAnalysis } from './src/runAnalysis.js';
 import { askClaude } from './src/askClaude.js';
 import { persistDb } from './src/persist.js';
 
@@ -89,43 +89,50 @@ app.patch('/api/contents/:id', (req, res) => {
   res.json(decorate(getContentById(req.params.id)));
 });
 
-// Rinomina il file di un contenuto (nome mostrato in lista/dettaglio, e il
-// file .mp4 in processed/ se ancora presente).
+// Rinomina un contenuto (nome mostrato in lista/dettaglio). Per i video
+// rinomina anche il file .mp4 in processed/ (forzando l'estensione); per i
+// caroselli è solo un'etichetta, non c'è un singolo file da rinominare.
 app.post('/api/contents/:id/rename', (req, res) => {
   const content = getContentById(req.params.id);
   if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
 
   let newFilename = String(req.body.filename || '').trim();
   if (!newFilename) return res.status(400).json({ error: 'Il nome non può essere vuoto.' });
-  newFilename = path.basename(newFilename).replace(/[^a-zA-Z0-9._\- ]/g, '_');
-  if (!/\.mp4$/i.test(newFilename)) newFilename += '.mp4';
 
-  if (newFilename !== content.filename && contentExistsByFilename(newFilename)) {
-    return res.status(409).json({ error: `Esiste già un contenuto chiamato "${newFilename}".` });
-  }
-
-  const updates = { filename: newFilename };
-  if (content.processed_path && fs.existsSync(content.processed_path)) {
-    const newPath = path.join(PROCESSED_DIR, newFilename);
-    fs.renameSync(content.processed_path, newPath);
-    updates.processed_path = newPath;
+  const updates = {};
+  if (content.content_type === 'carousel') {
+    newFilename = newFilename.slice(0, 120);
+    updates.filename = newFilename;
+  } else {
+    newFilename = path.basename(newFilename).replace(/[^a-zA-Z0-9._\- ]/g, '_');
+    if (!/\.mp4$/i.test(newFilename)) newFilename += '.mp4';
+    if (newFilename !== content.filename && contentExistsByFilename(newFilename)) {
+      return res.status(409).json({ error: `Esiste già un contenuto chiamato "${newFilename}".` });
+    }
+    updates.filename = newFilename;
+    if (content.processed_path && fs.existsSync(content.processed_path)) {
+      const newPath = path.join(PROCESSED_DIR, newFilename);
+      fs.renameSync(content.processed_path, newPath);
+      updates.processed_path = newPath;
+    }
   }
 
   updateContentFields(content.id, updates);
-  persistDb(`Rinomina file: ${content.id} -> ${newFilename}`);
+  persistDb(`Rinomina contenuto: ${content.id} -> ${newFilename}`);
   res.json(decorate(getContentById(content.id)));
 });
 
 // Elimina definitivamente un contenuto: riga nel database (e metriche
-// collegate), video in processed/, miniatura, eventuali fotogrammi rimasti.
+// collegate), video/immagini in processed/, miniatura, eventuali
+// fotogrammi rimasti.
 app.delete('/api/contents/:id', (req, res) => {
   const content = getContentById(req.params.id);
   if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
 
   if (content.processed_path && fs.existsSync(content.processed_path)) {
-    fs.rmSync(content.processed_path, { force: true });
+    fs.rmSync(content.processed_path, { recursive: true, force: true });
   }
-  fs.rmSync(path.join(THUMBNAILS_DIR, `${content.id}.jpg`), { force: true });
+  fs.rmSync(path.join(THUMBNAILS_DIR, `${content.id}${content.thumbnail_ext || '.jpg'}`), { force: true });
   fs.rmSync(path.join(FRAMES_DIR, content.id), { recursive: true, force: true });
 
   deleteContent(content.id);
@@ -219,21 +226,68 @@ app.post('/api/upload', (req, res) => {
   });
 });
 
-// Riprova l'analisi per un contenuto in stato "analysis_failed" (i
-// fotogrammi devono essere ancora presenti su disco).
+// Carica le immagini di un carosello: vengono salvate direttamente in
+// processed/<id>/ (sono il contenuto stesso, niente ffmpeg) e l'analisi
+// visiva parte subito in background, come per i video.
+const uploadCarousel = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const tmpDir = path.join(__dirname, 'incoming', '.carousel-tmp');
+      fs.mkdirSync(tmpDir, { recursive: true });
+      cb(null, tmpDir);
+    },
+    filename: (req, file, cb) => {
+      const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`);
+    },
+  }),
+  limits: { fileSize: 30 * 1024 * 1024, files: 20 },
+  fileFilter: (req, file, cb) => {
+    if (!/\.(jpe?g|png)$/i.test(file.originalname)) {
+      return cb(new Error('Sono accettate solo immagini .jpg/.png.'));
+    }
+    cb(null, true);
+  },
+});
+
+app.post('/api/upload-carousel', (req, res) => {
+  uploadCarousel.array('images', 20)(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'Nessuna immagine ricevuta (campo "images").' });
+    }
+    try {
+      const id = await ingestCarousel(req.files);
+      res.json({ id, status: 'analyzing' });
+    } catch (err) {
+      for (const file of req.files) fs.rmSync(file.path, { force: true });
+      res.status(400).json({ error: err.message });
+    }
+  });
+});
+
+// Riprova l'analisi per un contenuto in stato "analysis_failed" (per i
+// video, i fotogrammi devono essere ancora presenti su disco; per i
+// caroselli le immagini sono sempre lì, sono il contenuto permanente).
 app.post('/api/contents/:id/reanalyze', async (req, res) => {
   const content = getContentById(req.params.id);
   if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
 
-  const framesDir = path.join(FRAMES_DIR, content.id);
-  if (!fs.existsSync(framesDir)) {
-    return res.status(400).json({ error: 'Fotogrammi non più disponibili: ritrascina il video in incoming/.' });
+  const isCarousel = content.content_type === 'carousel';
+  const analysisDir = isCarousel ? content.processed_path : path.join(FRAMES_DIR, content.id);
+  if (!analysisDir || !fs.existsSync(analysisDir)) {
+    return res.status(400).json({
+      error: isCarousel
+        ? 'Immagini del carosello non più disponibili.'
+        : 'Fotogrammi non più disponibili: ritrascina il video in incoming/.',
+    });
   }
 
   updateContentFields(content.id, { status: 'analyzing' });
   res.json(decorate(getContentById(content.id)));
 
-  runAnalysis(content.id, framesDir)
+  const analysisFn = isCarousel ? runCarouselAnalysis : runAnalysis;
+  analysisFn(content.id, analysisDir)
     .then(() => persistDb(`Analisi completata: ${content.id}`))
     .catch((err) => {
       console.error(`✘ Nuovo tentativo fallito per ${content.id}: ${err.message}`);

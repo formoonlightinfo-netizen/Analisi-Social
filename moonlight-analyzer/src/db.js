@@ -52,19 +52,29 @@ db.exec(`
   );
 `);
 
+// Migrazioni leggere: aggiunge colonne mancanti a database già esistenti
+// (CREATE TABLE IF NOT EXISTS non tocca le tabelle già create in precedenza).
+const contentsColumns = db.prepare("PRAGMA table_info(contents)").all().map((c) => c.name);
+if (!contentsColumns.includes('content_type')) {
+  db.exec("ALTER TABLE contents ADD COLUMN content_type TEXT NOT NULL DEFAULT 'video'");
+}
+if (!contentsColumns.includes('thumbnail_ext')) {
+  db.exec("ALTER TABLE contents ADD COLUMN thumbnail_ext TEXT NOT NULL DEFAULT '.jpg'");
+}
+
 export function insertContent(content) {
   const stmt = db.prepare(`
     INSERT INTO contents (
-      id, filename, processed_path, duration_sec, status,
+      id, filename, processed_path, duration_sec, status, content_type, thumbnail_ext,
       hook_type, text_layering, image_text_coherence, coherence_score,
       format, editing_style, pacing, analysis_notes, analysis_raw, analyzed_at
     ) VALUES (
-      @id, @filename, @processed_path, @duration_sec, @status,
+      @id, @filename, @processed_path, @duration_sec, @status, @content_type, @thumbnail_ext,
       @hook_type, @text_layering, @image_text_coherence, @coherence_score,
       @format, @editing_style, @pacing, @analysis_notes, @analysis_raw, @analyzed_at
     )
   `);
-  stmt.run(content);
+  stmt.run({ content_type: 'video', thumbnail_ext: '.jpg', ...content });
 }
 
 export function getContentById(id) {

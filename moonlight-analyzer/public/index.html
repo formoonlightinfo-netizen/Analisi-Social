@@ -24,10 +24,14 @@
 
   <main class="layout">
     <section class="list-panel">
+      <div class="upload-mode-toggle">
+        <button id="modeVideoBtn" class="mode-btn active">Video</button>
+        <button id="modeCarouselBtn" class="mode-btn">Carosello</button>
+      </div>
       <div id="dropzone" class="dropzone">
         <input type="file" id="videoInput" accept="video/mp4,.mp4" hidden />
-        <p><strong>Carica un video</strong></p>
-        <p class="dz-hint">Trascinalo qui o <button id="browseBtn" class="link-btn">scegli il file</button> — l'analisi parte da sola</p>
+        <p><strong id="dzTitle">Carica un video</strong></p>
+        <p class="dz-hint" id="dzHint">Trascinalo qui o <button id="browseBtn" class="link-btn">scegli il file</button> — l'analisi parte da sola</p>
         <div id="uploadProgress" class="upload-progress hidden">
           <div class="spinner"></div>
           <span id="uploadProgressText">Caricamento...</span>

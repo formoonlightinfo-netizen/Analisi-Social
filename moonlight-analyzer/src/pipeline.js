@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepareVideo } from './processVideo.js';
-import { runAnalysis } from './runAnalysis.js';
+import { prepareCarousel } from './processCarousel.js';
+import { runAnalysis, runCarouselAnalysis } from './runAnalysis.js';
 import { updateContentFields } from './db.js';
 import { persistDb } from './persist.js';
 
@@ -22,6 +23,27 @@ export async function ingestVideo(videoPath) {
   persistDb(`Video pronto per l'analisi: ${id}`);
 
   runAnalysis(id, framesDir)
+    .then(() => persistDb(`Analisi completata: ${id}`))
+    .catch((err) => {
+      console.error(`✘ Analisi fallita per ${id}: ${err.message}`);
+      persistDb(`Analisi fallita: ${id}`);
+    });
+
+  return id;
+}
+
+/**
+ * Come ingestVideo, ma per un carosello (post con più immagini): nessuna
+ * estrazione ffmpeg, le immagini caricate sono già ciò che va analizzato.
+ * @param {{ path: string, originalname: string }[]} uploadedFiles
+ * @returns {Promise<string>} id del contenuto
+ */
+export async function ingestCarousel(uploadedFiles) {
+  const { id, imagesDir } = await prepareCarousel(uploadedFiles);
+  updateContentFields(id, { status: 'analyzing' });
+  persistDb(`Carosello pronto per l'analisi: ${id}`);
+
+  runCarouselAnalysis(id, imagesDir)
     .then(() => persistDb(`Analisi completata: ${id}`))
     .catch((err) => {
       console.error(`✘ Analisi fallita per ${id}: ${err.message}`);

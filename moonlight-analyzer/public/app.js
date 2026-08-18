@@ -2,6 +2,7 @@ const state = {
   contents: [],
   selectedId: null,
   sortMode: 'date',
+  uploadMode: 'video',
 };
 
 const listEl = document.getElementById('contentList');
@@ -68,6 +69,15 @@ async function uploadVideo(file) {
   return data;
 }
 
+async function uploadCarousel(files) {
+  const formData = new FormData();
+  for (const file of files) formData.append('images', file);
+  const res = await fetch('/api/upload-carousel', { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Errore ${res.status}`);
+  return data;
+}
+
 let pollTimer = null;
 function ensurePolling() {
   const hasPending = state.contents.some((c) => c.status === 'analyzing' || c.status === 'pending_analysis');
@@ -114,10 +124,10 @@ function sortedContents() {
 
 function renderList() {
   const list = sortedContents();
-  document.getElementById('archiveCount').textContent = `${state.contents.length} video`;
+  document.getElementById('archiveCount').textContent = `${state.contents.length} contenuti`;
   listEl.innerHTML = '';
   if (list.length === 0) {
-    listEl.innerHTML = '<li class="placeholder">Nessun contenuto ancora. Carica un video qui sopra per iniziare.</li>';
+    listEl.innerHTML = '<li class="placeholder">Nessun contenuto ancora. Carica un video o un carosello qui sopra per iniziare.</li>';
     return;
   }
   for (const content of list) {
@@ -129,13 +139,16 @@ function renderList() {
     const hookBadge = content.hook_type
       ? `<span class="badge neutral">${HOOK_LABELS[content.hook_type] || content.hook_type}</span>`
       : '';
+    const typeBadge = content.content_type === 'carousel'
+      ? '<span class="badge type-carousel">🖼️ Carosello</span>'
+      : '';
     const statusBadge = STATUS_BADGES[content.status] || '';
     li.innerHTML = `
       <div class="content-item-row">
-        <img class="thumb" src="/thumbnails/${content.id}.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="thumb" src="/thumbnails/${content.id}${content.thumbnail_ext || '.jpg'}" alt="" onerror="this.style.visibility='hidden'" />
         <div class="content-item-info">
           <div class="filename">${content.caption?.slice(0, 60) || content.filename}</div>
-          <div class="meta">${statusBadge}${hookBadge}${gapBadge}</div>
+          <div class="meta">${statusBadge}${typeBadge}${hookBadge}${gapBadge}</div>
         </div>
       </div>
     `;
@@ -162,7 +175,7 @@ function renderDetail(content) {
 
   detailEl.innerHTML = `
     <div class="detail-header">
-      <img class="detail-thumb" src="/thumbnails/${content.id}.jpg" alt="" onerror="this.style.display='none'" />
+      <img class="detail-thumb" src="/thumbnails/${content.id}${content.thumbnail_ext || '.jpg'}" alt="" onerror="this.style.display='none'" />
       <h2>${content.filename}</h2>
       <button id="deleteBtn" class="danger icon-btn">Elimina</button>
     </div>
@@ -334,13 +347,38 @@ async function saveMetrics(id, platform) {
 
 const dropzone = document.getElementById('dropzone');
 const videoInput = document.getElementById('videoInput');
-const browseBtn = document.getElementById('browseBtn');
 const uploadProgress = document.getElementById('uploadProgress');
 const uploadProgressText = document.getElementById('uploadProgressText');
+const modeVideoBtn = document.getElementById('modeVideoBtn');
+const modeCarouselBtn = document.getElementById('modeCarouselBtn');
+const dzTitle = document.getElementById('dzTitle');
+const dzHint = document.getElementById('dzHint');
 
-browseBtn.addEventListener('click', () => videoInput.click());
+function setUploadMode(mode) {
+  state.uploadMode = mode;
+  modeVideoBtn.classList.toggle('active', mode === 'video');
+  modeCarouselBtn.classList.toggle('active', mode === 'carousel');
+  if (mode === 'video') {
+    videoInput.accept = 'video/mp4,.mp4';
+    videoInput.multiple = false;
+    dzTitle.textContent = 'Carica un video';
+    dzHint.innerHTML = 'Trascinalo qui o <button id="browseBtn" class="link-btn">scegli il file</button> — l\'analisi parte da sola';
+  } else {
+    videoInput.accept = 'image/jpeg,image/png,.jpg,.jpeg,.png';
+    videoInput.multiple = true;
+    dzTitle.textContent = 'Carica un carosello';
+    dzHint.innerHTML = 'Trascina qui le immagini in ordine o <button id="browseBtn" class="link-btn">scegli i file</button> — l\'analisi parte da sola';
+  }
+  document.getElementById('browseBtn').addEventListener('click', () => videoInput.click());
+}
+
+modeVideoBtn.addEventListener('click', () => setUploadMode('video'));
+modeCarouselBtn.addEventListener('click', () => setUploadMode('carousel'));
+setUploadMode('video');
+
 videoInput.addEventListener('change', () => {
-  if (videoInput.files[0]) handleUpload(videoInput.files[0]);
+  const files = Array.from(videoInput.files);
+  if (files.length) handleUpload(files);
   videoInput.value = '';
 });
 
@@ -357,26 +395,46 @@ videoInput.addEventListener('change', () => {
   })
 );
 dropzone.addEventListener('drop', (e) => {
-  const file = e.dataTransfer.files[0];
-  if (file) handleUpload(file);
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) handleUpload(files);
 });
 
-async function handleUpload(file) {
-  if (!/\.mp4$/i.test(file.name)) {
-    toast('Sono accettati solo file .mp4.', true);
-    return;
-  }
-  uploadProgress.classList.remove('hidden');
-  uploadProgressText.textContent = `Caricamento di ${file.name}...`;
-  try {
-    await uploadVideo(file);
-    uploadProgressText.textContent = 'Caricato — analisi avviata in background.';
-    toast(`${file.name} caricato, analisi in corso.`);
-    await loadContents();
-  } catch (err) {
-    toast(err.message, true);
-  } finally {
-    setTimeout(() => uploadProgress.classList.add('hidden'), 2000);
+async function handleUpload(files) {
+  if (state.uploadMode === 'video') {
+    const file = files[0];
+    if (!/\.mp4$/i.test(file.name)) {
+      toast('Sono accettati solo file .mp4.', true);
+      return;
+    }
+    uploadProgress.classList.remove('hidden');
+    uploadProgressText.textContent = `Caricamento di ${file.name}...`;
+    try {
+      await uploadVideo(file);
+      uploadProgressText.textContent = 'Caricato — analisi avviata in background.';
+      toast(`${file.name} caricato, analisi in corso.`);
+      await loadContents();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      setTimeout(() => uploadProgress.classList.add('hidden'), 2000);
+    }
+  } else {
+    if (files.some((f) => !/\.(jpe?g|png)$/i.test(f.name))) {
+      toast('Sono accettate solo immagini .jpg/.jpeg/.png.', true);
+      return;
+    }
+    uploadProgress.classList.remove('hidden');
+    uploadProgressText.textContent = `Caricamento di ${files.length} immagini...`;
+    try {
+      await uploadCarousel(files);
+      uploadProgressText.textContent = 'Caricato — analisi avviata in background.';
+      toast(`Carosello caricato (${files.length} immagini), analisi in corso.`);
+      await loadContents();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      setTimeout(() => uploadProgress.classList.add('hidden'), 2000);
+    }
   }
 }
 
