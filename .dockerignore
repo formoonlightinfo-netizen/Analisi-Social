@@ -1,0 +1,7 @@
+moonlight-analyzer/node_modules
+moonlight-analyzer/incoming/*
+moonlight-analyzer/processed/*
+moonlight-analyzer/frames/*
+moonlight-analyzer/.env
+**/*.log
+**/.DS_Store
