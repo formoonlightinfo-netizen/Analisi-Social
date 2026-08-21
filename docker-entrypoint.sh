@@ -22,13 +22,18 @@ fi
 # "pulito"), quindi src/persist.js non troverebbe nulla su cui fare
 # commit+push. La ricostruiamo puntando allo stesso commit già presente sul
 # disco: `git reset` sposta solo l'indice/HEAD, non tocca i file già
-# copiati nell'immagine.
-rm -rf .git
-git init -q
-git remote add origin "$REMOTE_URL"
-git fetch -q origin "$BRANCH"
-git symbolic-ref HEAD "refs/heads/$BRANCH"
-git reset -q FETCH_HEAD
+# copiati nell'immagine. Se questo blocco fallisce (rete, token scaduto...)
+# il server deve partire comunque — persist.js già gestisce da solo il caso
+# "git non disponibile" senza far fallire le richieste HTTP.
+(
+  set -e
+  rm -rf .git
+  git init -q
+  git remote add origin "$REMOTE_URL"
+  git fetch -q origin "$BRANCH"
+  git symbolic-ref HEAD "refs/heads/$BRANCH"
+  git reset -q FETCH_HEAD
+) || echo "⚠ Setup di git all'avvio fallito — l'app parte comunque ma non salverà su GitHub finché non si risolve."
 
 cd /app/moonlight-analyzer
 exec "$@"
