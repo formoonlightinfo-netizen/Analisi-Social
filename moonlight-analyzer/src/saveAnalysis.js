@@ -8,7 +8,11 @@ const FRAMES_DIR = path.join(__dirname, '..', 'frames');
 
 const VALID_HOOK_TYPES = ['loop_aperto', 'rivelazione_diretta', 'domanda', 'testimonianza', 'contro_affermazione', 'altro'];
 const VALID_TEXT_LAYERING = ['progressivo', 'tutto_insieme'];
-const VALID_FORMATS = ['parlato_in_camera', 'voiceover_testo', 'montaggio_multiclip', 'slideshow', 'altro'];
+const VALID_FORMATS = [
+  'parlato_in_camera', 'parlato_in_camera_testo', 'voiceover_testo', 'testo',
+  'broll', 'broll_testo', 'broll_voiceover', 'broll_testo_voiceover',
+  'montaggio_multiclip', 'slideshow', 'altro',
+];
 
 /**
  * Salva l'analisi visiva (prodotta da Claude Code guardando i fotogrammi) per
