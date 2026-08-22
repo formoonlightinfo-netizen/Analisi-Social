@@ -38,19 +38,24 @@
         </div>
       </div>
 
-      <div class="archive-title">
+      <button type="button" id="archiveToggle" class="archive-title">
         <p class="section-title">Archivio</p>
         <span id="archiveCount" class="archive-count">0 video</span>
+        <span id="archiveChevron" class="archive-chevron">▾</span>
+      </button>
+      <div id="archiveBody">
+        <div class="archive-body-inner">
+          <div class="list-controls">
+            <label for="sortSelect">Ordina per</label>
+            <select id="sortSelect">
+              <option value="date">Data (più recenti)</option>
+              <option value="engagement">Engagement aggregato</option>
+              <option value="gap">Divario piattaforme</option>
+            </select>
+          </div>
+          <ul id="contentList" class="content-list"></ul>
+        </div>
       </div>
-      <div class="list-controls">
-        <label for="sortSelect">Ordina per</label>
-        <select id="sortSelect">
-          <option value="date">Data (più recenti)</option>
-          <option value="engagement">Engagement aggregato</option>
-          <option value="gap">Divario piattaforme</option>
-        </select>
-      </div>
-      <ul id="contentList" class="content-list"></ul>
     </section>
 
     <section id="detailPanel" class="detail-panel">

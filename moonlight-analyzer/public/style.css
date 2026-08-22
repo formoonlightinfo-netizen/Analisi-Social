@@ -168,11 +168,24 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 8px;
   margin-bottom: 10px;
-  padding: 0 2px;
+  padding: 4px 2px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
+.archive-title:hover { background: none; border: none; }
 .archive-title .section-title { margin: 0; }
-.archive-count { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.archive-count { font-size: 12px; color: var(--text-dim); font-weight: 600; margin-right: auto; margin-left: 8px; }
+.archive-chevron { color: var(--text-faint); font-size: 12px; transition: transform 0.15s; }
+#archiveBody { overflow: hidden; transition: grid-template-rows 0.2s ease; display: grid; grid-template-rows: 1fr; }
+#archiveBody > * { min-height: 0; }
+.list-panel.collapsed #archiveBody { grid-template-rows: 0fr; }
+.list-panel.collapsed .archive-chevron { transform: rotate(-90deg); }
 
 .list-controls {
   display: flex;

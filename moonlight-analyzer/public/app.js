@@ -579,4 +579,12 @@ function renderReport(report) {
   `;
 }
 
+const listPanelEl = document.querySelector('.list-panel');
+const archiveToggle = document.getElementById('archiveToggle');
+if (localStorage.getItem('archiveCollapsed') === '1') listPanelEl.classList.add('collapsed');
+archiveToggle.addEventListener('click', () => {
+  const collapsed = listPanelEl.classList.toggle('collapsed');
+  localStorage.setItem('archiveCollapsed', collapsed ? '1' : '0');
+});
+
 loadContents();
