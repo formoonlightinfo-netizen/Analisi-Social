@@ -49,6 +49,16 @@ function pct(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+// created_at è salvato da SQLite come "YYYY-MM-DD HH:MM:SS" in UTC, senza
+// indicazione esplicita di fuso — va normalizzato prima di farlo leggere a
+// Date(), altrimenti alcuni browser lo interpretano come ora locale.
+function minutesSince(dateString) {
+  if (!dateString) return 0;
+  const then = new Date(dateString.replace(' ', 'T') + 'Z').getTime();
+  if (Number.isNaN(then)) return 0;
+  return (Date.now() - then) / 60000;
+}
+
 function aggregateEngagement(content) {
   const values = content.metrics.map((m) => m.engagement).filter((v) => v != null);
   if (values.length === 0) return -1;
@@ -217,8 +227,11 @@ function renderDetail(content) {
     ${content.status === 'pending_analysis' || content.status === 'analyzing' ? `
     <div class="analysis-card">
       <h3>Analisi visiva</h3>
-      <p class="placeholder">${content.status === 'analyzing' ? '🔄 Analisi in corso... di solito richiede 1-3 minuti, questa pagina si aggiorna da sola. Se resta bloccata per molto più a lungo, puoi riprovare qui sotto.' : 'In coda per l\'analisi.'}</p>
+      <p class="placeholder">${content.status === 'analyzing' ? '🔄 Analisi in corso... di solito richiede 1-3 minuti, questa pagina si aggiorna da sola.' : 'In coda per l\'analisi.'}</p>
+      ${minutesSince(content.created_at) >= 6 ? `
+      <p class="placeholder">Sta impiegando più del solito — se pensi sia bloccata, puoi riprovare:</p>
       <div class="save-row"><button id="retryBtn" class="primary">Riprova analisi</button></div>
+      ` : ''}
     </div>
     ` : content.status === 'analysis_failed' ? `
     <div class="analysis-card">
