@@ -33,7 +33,20 @@ export function persistDb(message) {
     const diff = execFileSync('git', ['diff', '--cached', '--name-only'], opts).toString().trim();
     if (!diff) return; // nessuna modifica reale (es. solo timestamp WAL)
     execFileSync('git', ['commit', '-m', message], opts);
-    execFileSync('git', ['push'], opts);
+    try {
+      execFileSync('git', ['push'], opts);
+    } catch {
+      // Il push è stato respinto perché il branch remoto è avanzato nel
+      // frattempo (es. un deploy pushato da un'altra postazione). Senza
+      // questo recupero il fallimento veniva ignorato in silenzio — i dati
+      // restavano solo su questo container e sparivano al riavvio
+      // successivo. Ci riallineiamo tenendo la versione appena scritta qui
+      // (-X ours, i dati più recenti) e riproviamo il push una volta.
+      const branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], opts).toString().trim();
+      execFileSync('git', ['fetch', 'origin', branch], opts);
+      execFileSync('git', ['merge', '-X', 'ours', '--no-edit', 'FETCH_HEAD'], opts);
+      execFileSync('git', ['push'], opts);
+    }
   } catch (err) {
     console.error(`⚠ Impossibile salvare l'archivio su GitHub: ${err.message}`);
   }

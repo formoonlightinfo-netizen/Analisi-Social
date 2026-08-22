@@ -37,9 +37,10 @@ body {
 
 .topbar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 28px;
+  gap: 12px;
+  padding: 20px 28px;
   border-bottom: 1px solid var(--border-soft);
   background: rgba(18, 26, 43, 0.75);
   backdrop-filter: blur(10px);
@@ -48,9 +49,7 @@ body {
   z-index: 5;
 }
 
-.topbar h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
-.brand-logo { height: 34px; width: auto; display: block; }
-.brand-fallback { display: none; font-size: 20px; }
+.topbar h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -0.01em; text-align: center; }
 
 button {
   background: var(--panel-2);
@@ -70,7 +69,8 @@ button.primary:hover { filter: brightness(1.08); background: linear-gradient(135
 button.danger { border-color: var(--bad); color: var(--bad); background: transparent; }
 button.icon-btn { padding: 8px 10px; font-size: 13px; }
 
-.actions { display: flex; gap: 10px; }
+.actions { display: flex; flex-direction: column; gap: 10px; width: min(260px, 100%); }
+.actions button { width: 100%; }
 
 .layout {
   display: grid;
