@@ -292,10 +292,11 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-.field-block { margin-bottom: 16px; }
+.field-block { min-width: 0; margin-bottom: 16px; }
 .field-block label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
 .field-block input, .field-block textarea, .field-block select {
   width: 100%;
+  max-width: 100%;
   background: var(--panel-2);
   color: var(--text);
   border: 1px solid var(--border);
@@ -326,7 +327,9 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
   border-radius: var(--radius-sm);
   padding: 12px 14px;
 }
-.analysis-tile.span-2 { grid-column: 1 / -1; }
+.analysis-grid .span-2 { grid-column: 1 / -1; }
+.analysis-grid .field-block { margin-bottom: 0; }
+.analysis-hint { font-size: 11px; font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
 .analysis-tile .k {
   display: block;
   font-size: 10.5px;
@@ -343,6 +346,7 @@ button.icon-btn { padding: 8px 10px; font-size: 13px; }
 }
 
 .platform-card {
+  min-width: 0;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   padding: 20px;

@@ -209,20 +209,30 @@ function renderDetail(content) {
     </div>
     ` : `
     <div class="analysis-card">
-      <h3>Analisi visiva</h3>
+      <h3>Analisi visiva <span class="analysis-hint">(rilevata automaticamente — correggi qui se qualcosa è sbagliato)</span></h3>
       <div class="analysis-grid">
-        <div class="analysis-tile"><span class="k">Durata</span><span class="v">${content.duration_sec ? content.duration_sec.toFixed(1) + 's' : '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Formato</span><span class="v">${FORMAT_LABELS[content.format] || content.format || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Hook</span><span class="v">${HOOK_LABELS[content.hook_type] || content.hook_type || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Testo a strati</span><span class="v">${content.text_layering || '—'}</span></div>
-        <div class="analysis-tile span-2"><span class="k">Coerenza immagine/testo (${content.coherence_score ?? '—'}/5)</span><span class="v">${content.image_text_coherence || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Ritmo tagli</span><span class="v">${editing.ritmo_tagli || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Zoom/transizioni</span><span class="v">${editing.zoom_transizioni || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Stile testo overlay</span><span class="v">${editing.stile_testo_overlay || '—'}</span></div>
-        <div class="analysis-tile"><span class="k">Coerenza editing/tono</span><span class="v">${editing.coerenza_editing_tono || '—'}</span></div>
-        <div class="analysis-tile span-2"><span class="k">Pacing</span><span class="v">${content.pacing || '—'}</span></div>
-        <div class="analysis-tile span-2"><span class="k">Note</span><span class="v">${content.analysis_notes || '—'}</span></div>
+        ${content.content_type !== 'carousel' ? `
+        <div class="field-block"><label>Durata (secondi)</label><input id="an-duration_sec" type="number" step="0.1" min="0" value="${content.duration_sec ?? ''}" /></div>
+        ` : ''}
+        <div class="field-block">
+          <label>Formato</label>
+          <select id="an-format">${Object.entries(FORMAT_LABELS).map(([k, v]) => `<option value="${k}" ${content.format === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        </div>
+        <div class="field-block">
+          <label>Hook</label>
+          <select id="an-hook_type">${Object.entries(HOOK_LABELS).map(([k, v]) => `<option value="${k}" ${content.hook_type === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        </div>
+        <div class="field-block"><label>Testo a strati</label><input id="an-text_layering" value="${content.text_layering || ''}" /></div>
+        <div class="field-block"><label>Coerenza immagine/testo (punteggio 1-5)</label><input id="an-coherence_score" type="number" min="1" max="5" value="${content.coherence_score ?? ''}" /></div>
+        <div class="field-block span-2"><label>Descrizione coerenza immagine/testo</label><textarea id="an-image_text_coherence">${content.image_text_coherence || ''}</textarea></div>
+        <div class="field-block"><label>Ritmo tagli</label><input id="an-ritmo_tagli" value="${editing.ritmo_tagli || ''}" /></div>
+        <div class="field-block"><label>Zoom/transizioni</label><input id="an-zoom_transizioni" value="${editing.zoom_transizioni || ''}" /></div>
+        <div class="field-block"><label>Stile testo overlay</label><input id="an-stile_testo_overlay" value="${editing.stile_testo_overlay || ''}" /></div>
+        <div class="field-block"><label>Coerenza editing/tono</label><input id="an-coerenza_editing_tono" value="${editing.coerenza_editing_tono || ''}" /></div>
+        <div class="field-block span-2"><label>Pacing</label><textarea id="an-pacing">${content.pacing || ''}</textarea></div>
+        <div class="field-block span-2"><label>Note</label><textarea id="an-analysis_notes">${content.analysis_notes || ''}</textarea></div>
       </div>
+      <div class="save-row"><button id="saveAnalysisBtn" class="primary">Salva analisi</button></div>
     </div>
     `}
 
@@ -239,6 +249,36 @@ function renderDetail(content) {
     document.getElementById(`save-${platform}`)?.addEventListener('click', () => saveMetrics(content.id, platform));
   }
   document.getElementById('retryBtn')?.addEventListener('click', () => retryAnalysis(content.id));
+  document.getElementById('saveAnalysisBtn')?.addEventListener('click', () => saveAnalysis(content.id));
+}
+
+async function saveAnalysis(id) {
+  const val = (fieldId) => document.getElementById(fieldId)?.value;
+  const body = {
+    format: val('an-format'),
+    hook_type: val('an-hook_type'),
+    text_layering: val('an-text_layering'),
+    coherence_score: val('an-coherence_score'),
+    image_text_coherence: val('an-image_text_coherence'),
+    pacing: val('an-pacing'),
+    analysis_notes: val('an-analysis_notes'),
+    editing_style: {
+      ritmo_tagli: val('an-ritmo_tagli'),
+      zoom_transizioni: val('an-zoom_transizioni'),
+      stile_testo_overlay: val('an-stile_testo_overlay'),
+      coerenza_editing_tono: val('an-coerenza_editing_tono'),
+    },
+  };
+  const durationVal = val('an-duration_sec');
+  if (durationVal !== undefined) body.duration_sec = durationVal;
+  try {
+    await api(`/api/contents/${id}`, { method: 'PATCH', body });
+    toast('Analisi aggiornata.');
+    await loadContents();
+    await selectContent(id);
+  } catch (err) {
+    toast(err.message, true);
+  }
 }
 
 async function deleteContentConfirm(id, filename) {

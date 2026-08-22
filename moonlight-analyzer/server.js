@@ -76,16 +76,29 @@ app.patch('/api/contents/:id', (req, res) => {
   const content = getContentById(req.params.id);
   if (!content) return res.status(404).json({ error: 'Contenuto non trovato.' });
 
-  const allowed = ['caption', 'category'];
+  const textFields = [
+    'caption', 'category', 'hook_type', 'text_layering', 'image_text_coherence', 'format', 'pacing', 'analysis_notes',
+  ];
+  const numberFields = ['coherence_score', 'duration_sec'];
   const fields = {};
-  for (const key of allowed) {
+  for (const key of textFields) {
     if (key in req.body) fields[key] = String(req.body[key] ?? '');
   }
+  for (const key of numberFields) {
+    if (key in req.body) {
+      const n = Number(req.body[key]);
+      fields[key] = Number.isFinite(n) ? n : null;
+    }
+  }
+  // editing_style è salvato come JSON (vedi src/db.js) — il client manda un
+  // oggetto con le sotto-voci (ritmo tagli, zoom, ecc.), qui lo serializziamo.
+  if ('editing_style' in req.body) fields.editing_style = JSON.stringify(req.body.editing_style ?? {});
+
   if (Object.keys(fields).length === 0) {
-    return res.status(400).json({ error: 'Nessun campo valido da aggiornare (caption, category).' });
+    return res.status(400).json({ error: 'Nessun campo valido da aggiornare.' });
   }
   updateContentFields(req.params.id, fields);
-  persistDb(`Aggiorna caption/categoria: ${req.params.id}`);
+  persistDb(`Aggiorna contenuto: ${req.params.id}`);
   res.json(decorate(getContentById(req.params.id)));
 });
 
