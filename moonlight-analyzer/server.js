@@ -62,6 +62,14 @@ app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
 app.use(requireAuth);
 app.use(express.json({ limit: '10mb' }));
+// Alcuni browser "interni" (aperti da altre app, non Safari vero) tengono in
+// cache aggressivamente sia l'HTML sia le risposte delle API, mostrando
+// contenuti/analisi vecchie anche dopo un ricaricamento. Disattiva la cache
+// su ogni risposta di questa app.
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 function decorate(content) {
