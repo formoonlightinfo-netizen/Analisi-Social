@@ -11,7 +11,7 @@ const JSON_SCHEMA = `{
   "text_layering": "progressivo" | "tutto_insieme",
   "image_text_coherence": "descrizione di quanto l'inquadratura/ambientazione è coerente con il messaggio testuale",
   "coherence_score": <intero da 1 a 5, dove 5 = massima coerenza>,
-  "format": "parlato_in_camera" | "voiceover_testo" | "montaggio_multiclip" | "slideshow" | "altro",
+  "format": "parlato_in_camera" | "parlato_in_camera_testo" | "voiceover_testo" | "testo" | "broll" | "broll_testo" | "broll_voiceover" | "broll_testo_voiceover" | "montaggio_multiclip" | "slideshow" | "altro",
   "editing_style": {
     "ritmo_tagli": "descrizione del ritmo dei tagli (o del ritmo di lettura tra le slide per un carosello)",
     "zoom_transizioni": "uso di zoom, transizioni, effetti (o transizioni/animazioni tra slide, 'nessuna' se non ci sono)",
@@ -24,7 +24,9 @@ const JSON_SCHEMA = `{
 
 const VIDEO_PROMPT = `Sei un analista esperto di contenuti video per social media (Instagram Reels e TikTok), specializzato in contenuti di coaching spirituale e arti occulte. Guarda con lo strumento Read, in ordine, tutti i fotogrammi .jpg presenti in questa cartella (sono estratti a circa 1 al secondo da uno stesso video già pubblicato, con testo/sottotitoli in overlay come appaiono nel post reale). Poi rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza altro testo prima o dopo, con questa struttura esatta:
 
-${JSON_SCHEMA}`;
+${JSON_SCHEMA}
+
+Nota importante sul campo "format": non hai accesso all'audio del video, solo ai fotogrammi — non puoi sapere con certezza se c'è un voiceover. Scegli un valore con "voiceover" SOLO se ci sono indizi visivi chiari e diretti (es. sottotitoli sincronizzati parola per parola in stile parlato, non semplice testo di hook statico). In assenza di quegli indizi, preferisci "testo", "broll_testo" o "parlato_in_camera_testo" invece di indovinare un voiceover. Questi contenuti sono spesso video brevi (~7 secondi) con un gancio scritto in overlay: è normale che molti siano "testo" o "broll_testo" senza narrazione vocale.`;
 
 const CAROUSEL_PROMPT = `Sei un analista esperto di contenuti social media (Instagram/TikTok carousel), specializzato in contenuti di coaching spirituale e arti occulte. Guarda con lo strumento Read, in ordine (slide-01, slide-02, ...), tutte le immagini presenti in questa cartella: sono le slide di uno stesso post carosello già pubblicato, con testo in overlay come appare nel post reale. Valuta la prima slide come "copertina/hook" del carosello, e le successive come lo sviluppo del contenuto. Poi rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza altro testo prima o dopo, con questa struttura esatta:
 

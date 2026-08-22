@@ -69,7 +69,7 @@ button.primary:hover { filter: brightness(1.08); background: linear-gradient(135
 button.danger { border-color: var(--bad); color: var(--bad); background: transparent; }
 button.icon-btn { padding: 8px 10px; font-size: 13px; }
 
-.actions { display: flex; flex-direction: column; gap: 10px; width: min(260px, 100%); }
+.actions { display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(260px, 100%); margin: 0 auto; }
 .actions button { width: 100%; }
 
 .layout {
@@ -405,4 +405,13 @@ tbody tr:hover { background: var(--panel-2); }
   .layout { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
   .analysis-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  /* Su schermi stretti .layout e .detail-panel/.list-panel avevano ognuno
+     il proprio padding: sommati lasciavano un bordo enorme (56px per lato)
+     che faceva sembrare i riquadri stretti e "non centrati" rispetto allo
+     schermo. Un solo livello di margine più sottile qui. */
+  .layout { padding: 12px; gap: 12px; }
+  .list-panel, .detail-panel { padding: 16px; }
 }

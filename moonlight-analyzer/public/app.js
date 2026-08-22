@@ -20,7 +20,13 @@ const HOOK_LABELS = {
 };
 const FORMAT_LABELS = {
   parlato_in_camera: 'Parlato in camera',
+  parlato_in_camera_testo: 'Parlato in camera + testo',
   voiceover_testo: 'Voiceover + testo',
+  testo: 'Testo',
+  broll: 'B-Roll',
+  broll_testo: 'B-Roll + testo',
+  broll_voiceover: 'B-Roll + voiceover',
+  broll_testo_voiceover: 'B-Roll + testo + voiceover',
   montaggio_multiclip: 'Montaggio multi-clip',
   slideshow: 'Slideshow',
   altro: 'Altro',
