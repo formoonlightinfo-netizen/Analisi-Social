@@ -613,4 +613,17 @@ archiveToggle.addEventListener('click', () => {
   localStorage.setItem('archiveCollapsed', collapsed ? '1' : '0');
 });
 
+// Un'app "aggiunta alla Home" su iPhone spesso resta congelata in
+// background e, quando la riapri, non rifà mai una richiesta al server —
+// mostra semplicemente la schermata rimasta da prima, con dati vecchi. Qui
+// forziamo un ricaricamento ogni volta che l'app torna visibile o viene
+// ripristinata dalla cache di navigazione (bfcache) invece di essere
+// ricaricata davvero.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') loadContents();
+});
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) loadContents();
+});
+
 loadContents();
