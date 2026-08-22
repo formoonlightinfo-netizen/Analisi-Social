@@ -296,7 +296,7 @@ app.post('/api/contents/:id/reanalyze', async (req, res) => {
     return res.status(400).json({
       error: isCarousel
         ? 'Immagini del carosello non più disponibili.'
-        : 'Fotogrammi non più disponibili: ritrascina il video in incoming/.',
+        : 'Fotogrammi non più disponibili (il server è ripartito nel frattempo): elimina questo contenuto e ricarica di nuovo il video.',
     });
   }
 
