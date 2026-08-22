@@ -17,7 +17,7 @@ import { generateReport, engagementRate, platformGap } from './src/report.js';
 import { ingestIncoming, ingestVideo, ingestCarousel } from './src/pipeline.js';
 import { runAnalysis, runCarouselAnalysis } from './src/runAnalysis.js';
 import { askClaude } from './src/askClaude.js';
-import { persistDb } from './src/persist.js';
+import { persistDb, getPersistStatus } from './src/persist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -60,6 +60,10 @@ function decorate(content) {
   const metrics = content.metrics.map((m) => ({ ...m, engagement: engagementRate(m) }));
   return { ...content, metrics, gap: platformGap(content) };
 }
+
+app.get('/api/persist-status', (req, res) => {
+  res.json(getPersistStatus());
+});
 
 app.get('/api/contents', (req, res) => {
   const contents = listContents().map(decorate);

@@ -10,11 +10,25 @@ const THUMBNAILS_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'thum
 const ICONS_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'icons');
 const LOGO_RELATIVE_PATH = path.join('moonlight-analyzer', 'public', 'logo.png');
 
+// Stato dell'ultimo tentativo di salvataggio, esposto via GET
+// /api/persist-status: su un hosting con filesystem effimero (es. il piano
+// gratuito di Render, che lo azzera a ogni riavvio/spin-down) un push
+// fallito e ignorato in silenzio significa dati persi per sempre alla
+// prossima ripartenza — meglio mostrarlo subito che scoprirlo dopo.
+let lastPersistOk = true;
+let lastPersistError = null;
+
+export function getPersistStatus() {
+  return { ok: lastPersistOk, error: lastPersistError };
+}
+
 /**
  * Salva su GitHub il database dell'archivio dopo ogni modifica, così i dati
  * non si perdono quando una sessione cloud di Claude Code termina (il
  * container è "usa e getta"). Non blocca né fa fallire la richiesta HTTP se
- * git non è disponibile o non ci sono modifiche da salvare.
+ * git non è disponibile o non ci sono modifiche da salvare — controlla però
+ * getPersistStatus()/lo stato restituito per sapere se è davvero riuscito.
+ * @returns {boolean} true se salvato (o se non c'era nulla da salvare)
  */
 export function persistDb(message) {
   const repoRoot = path.join(__dirname, '..', '..');
@@ -31,7 +45,11 @@ export function persistDb(message) {
     if (fs.existsSync(path.join(repoRoot, LOGO_RELATIVE_PATH))) paths.push(LOGO_RELATIVE_PATH);
     execFileSync('git', ['add', ...paths], opts);
     const diff = execFileSync('git', ['diff', '--cached', '--name-only'], opts).toString().trim();
-    if (!diff) return; // nessuna modifica reale (es. solo timestamp WAL)
+    if (!diff) {
+      lastPersistOk = true;
+      lastPersistError = null;
+      return true; // nessuna modifica reale (es. solo timestamp WAL)
+    }
     execFileSync('git', ['commit', '-m', message], opts);
     try {
       execFileSync('git', ['push'], opts);
@@ -47,7 +65,13 @@ export function persistDb(message) {
       execFileSync('git', ['merge', '-X', 'ours', '--no-edit', 'FETCH_HEAD'], opts);
       execFileSync('git', ['push'], opts);
     }
+    lastPersistOk = true;
+    lastPersistError = null;
+    return true;
   } catch (err) {
+    lastPersistOk = false;
+    lastPersistError = err.message;
     console.error(`⚠ Impossibile salvare l'archivio su GitHub: ${err.message}`);
+    return false;
   }
 }

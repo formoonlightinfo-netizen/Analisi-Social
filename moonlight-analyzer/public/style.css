@@ -402,6 +402,17 @@ th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--bor
 th { color: var(--text-faint); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
 tbody tr:hover { background: var(--panel-2); }
 
+.persist-warning {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-bottom: 1px solid var(--bad);
+  padding: 10px 20px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.persist-warning.hidden { display: none; }
+
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--panel-3); border: 1px solid var(--accent);

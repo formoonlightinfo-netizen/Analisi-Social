@@ -110,10 +110,22 @@ function ensurePolling() {
   }, 4000);
 }
 
+const persistWarningEl = document.getElementById('persistWarning');
+async function checkPersistStatus() {
+  try {
+    const status = await api('/api/persist-status');
+    persistWarningEl.classList.toggle('hidden', status.ok);
+  } catch {
+    // se il controllo stesso fallisce (es. rete assente) non nascondiamo
+    // un avviso già mostrato, ma non ne mostriamo uno nuovo per questo
+  }
+}
+
 async function loadContents() {
   state.contents = await api('/api/contents');
   renderList();
   ensurePolling();
+  checkPersistStatus();
 }
 
 function sortedContents() {
