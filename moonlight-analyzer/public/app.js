@@ -220,10 +220,7 @@ function renderDetail(content) {
         ${content.content_type !== 'carousel' ? `
         <div class="field-block"><label>Durata (secondi)</label><input id="an-duration_sec" type="number" step="0.1" min="0" value="${content.duration_sec ?? ''}" /></div>
         ` : ''}
-        <div class="field-block">
-          <label>Formato</label>
-          <select id="an-format">${Object.entries(FORMAT_LABELS).map(([k, v]) => `<option value="${k}" ${content.format === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-        </div>
+        <div class="field-block"><label>Formato</label><input id="an-format" value="${FORMAT_LABELS[content.format] || content.format || ''}" /></div>
         <div class="field-block">
           <label>Hook</label>
           <select id="an-hook_type">${Object.entries(HOOK_LABELS).map(([k, v]) => `<option value="${k}" ${content.hook_type === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
@@ -315,13 +312,13 @@ function platformForm(content, platform) {
   const m = content.metrics.find((x) => x.platform === platform);
   const label = platform === 'instagram' ? 'Instagram' : 'TikTok';
   const savesLabel = platform === 'instagram' ? 'Salvataggi' : 'Preferiti';
-  const reachLabel = platform === 'instagram' ? 'Reach' : 'Visualizzazioni';
+  const reachLabel = 'Visualizzazioni';
   return `
     <div class="platform-card">
       <h3>${label}</h3>
       <div class="engagement">${m ? pct(m.engagement) : '—'}</div>
       <div class="field-block"><label>Link</label><input id="${platform}-url" value="${metricValue(content, platform, 'url')}" /></div>
-      <div class="field-block"><label>Data pubblicazione</label><input id="${platform}-published_at" type="date" value="${metricValue(content, platform, 'published_at') || ''}" /></div>
+      <div class="field-block"><label>Data pubblicazione</label><input id="${platform}-published_at" type="text" placeholder="GG/MM/AAAA" value="${metricValue(content, platform, 'published_at') || ''}" /></div>
       <div class="field-block"><label>Like</label><input id="${platform}-likes" type="number" min="0" value="${metricValue(content, platform, 'likes')}" /></div>
       <div class="field-block"><label>Commenti</label><input id="${platform}-comments" type="number" min="0" value="${metricValue(content, platform, 'comments')}" /></div>
       <div class="field-block"><label>Condivisioni</label><input id="${platform}-shares" type="number" min="0" value="${metricValue(content, platform, 'shares')}" /></div>
