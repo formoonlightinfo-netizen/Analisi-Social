@@ -33,6 +33,10 @@ fi
   git fetch -q origin "$BRANCH"
   git symbolic-ref HEAD "refs/heads/$BRANCH"
   git reset -q FETCH_HEAD
+  # Senza questo, `git push` (senza argomenti, come lo chiama persist.js) non
+  # sa su quale branch remoto mandare i dati e fallisce con "has no upstream
+  # branch" — è esattamente quello che stava succedendo.
+  git branch -q --set-upstream-to="origin/$BRANCH" "$BRANCH"
 ) || echo "⚠ Setup di git all'avvio fallito — l'app parte comunque ma non salverà su GitHub finché non si risolve."
 
 cd /app/moonlight-analyzer

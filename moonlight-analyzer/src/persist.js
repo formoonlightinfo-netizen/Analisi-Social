@@ -51,8 +51,12 @@ export function persistDb(message) {
       return true; // nessuna modifica reale (es. solo timestamp WAL)
     }
     execFileSync('git', ['commit', '-m', message], opts);
+    const branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], opts).toString().trim();
+    // Push esplicito su HEAD:<branch> invece del semplice `git push`: non
+    // richiede che il branch abbia un upstream configurato (una volta è
+    // mancato, causando "has no upstream branch" e un push mai arrivato).
     try {
-      execFileSync('git', ['push'], opts);
+      execFileSync('git', ['push', 'origin', `HEAD:${branch}`], opts);
     } catch {
       // Il push è stato respinto perché il branch remoto è avanzato nel
       // frattempo (es. un deploy pushato da un'altra postazione). Senza
@@ -60,10 +64,9 @@ export function persistDb(message) {
       // restavano solo su questo container e sparivano al riavvio
       // successivo. Ci riallineiamo tenendo la versione appena scritta qui
       // (-X ours, i dati più recenti) e riproviamo il push una volta.
-      const branch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], opts).toString().trim();
       execFileSync('git', ['fetch', 'origin', branch], opts);
       execFileSync('git', ['merge', '-X', 'ours', '--no-edit', 'FETCH_HEAD'], opts);
-      execFileSync('git', ['push'], opts);
+      execFileSync('git', ['push', 'origin', `HEAD:${branch}`], opts);
     }
     lastPersistOk = true;
     lastPersistError = null;
