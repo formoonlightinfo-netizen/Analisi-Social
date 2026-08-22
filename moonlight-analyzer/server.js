@@ -52,6 +52,14 @@ function requireAuth(req, res, next) {
 }
 
 const app = express();
+
+// Render controlla periodicamente se il servizio risponde ("health check").
+// Senza una rotta dedicata SENZA password, quel controllo riceve un 401 dal
+// middleware di autenticazione qui sotto, Render pensa che il servizio sia
+// rotto e lo riavvia in continuazione — impedendo a qualsiasi analisi (dura
+// 1-3 minuti) di completarsi mai. Deve stare prima di requireAuth.
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
+
 app.use(requireAuth);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
