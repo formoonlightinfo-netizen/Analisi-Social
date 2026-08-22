@@ -217,7 +217,8 @@ function renderDetail(content) {
     ${content.status === 'pending_analysis' || content.status === 'analyzing' ? `
     <div class="analysis-card">
       <h3>Analisi visiva</h3>
-      <p class="placeholder">${content.status === 'analyzing' ? '🔄 Analisi in corso... di solito richiede 1-3 minuti, questa pagina si aggiorna da sola.' : 'In coda per l\'analisi.'}</p>
+      <p class="placeholder">${content.status === 'analyzing' ? '🔄 Analisi in corso... di solito richiede 1-3 minuti, questa pagina si aggiorna da sola. Se resta bloccata per molto più a lungo, puoi riprovare qui sotto.' : 'In coda per l\'analisi.'}</p>
+      <div class="save-row"><button id="retryBtn" class="primary">Riprova analisi</button></div>
     </div>
     ` : content.status === 'analysis_failed' ? `
     <div class="analysis-card">
