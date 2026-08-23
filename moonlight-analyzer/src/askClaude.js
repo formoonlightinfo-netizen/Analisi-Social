@@ -12,7 +12,7 @@ const ROOT = path.join(__dirname, '..');
 
 function formatMetric(m) {
   const eng = engagementRate(m);
-  return `${m.platform}: ${m.likes ?? 0} like, ${m.comments ?? 0} commenti, ${m.shares ?? 0} condivisioni, reach ${m.reach ?? '—'}${eng != null ? `, engagement ${(eng * 100).toFixed(1)}%` : ''}`;
+  return `${m.platform}: ${m.likes ?? 0} like, ${m.comments ?? 0} commenti, ${m.shares ?? 0} condivisioni, reach ${m.reach ?? '—'}, follower acquisiti ${m.followers_gained ?? '—'}${eng != null ? `, engagement ${(eng * 100).toFixed(1)}%` : ''}`;
 }
 
 function buildArchiveSummary() {

@@ -351,6 +351,7 @@ function platformForm(content, platform) {
       <div class="field-block"><label>${savesLabel}</label><input id="${platform}-saves" type="number" min="0" value="${metricValue(content, platform, 'saves')}" /></div>
       ${platform === 'instagram' ? `<div class="field-block"><label>Repost</label><input id="instagram-reposts" type="number" min="0" value="${metricValue(content, platform, 'reposts')}" /></div>` : ''}
       <div class="field-block"><label>${reachLabel}</label><input id="${platform}-reach" type="number" min="0" value="${metricValue(content, platform, 'reach')}" /></div>
+      <div class="field-block"><label>Follower acquisiti</label><input id="${platform}-followers_gained" type="number" min="0" value="${metricValue(content, platform, 'followers_gained')}" /></div>
       <div class="save-row"><button id="save-${platform}" class="primary">Salva ${label}</button></div>
     </div>
   `;
@@ -404,6 +405,7 @@ async function saveMetrics(id, platform) {
         saves: field('saves'),
         reposts: platform === 'instagram' ? field('reposts') : null,
         reach: field('reach'),
+        followers_gained: field('followers_gained'),
       },
     });
     toast(`Metriche ${platform} salvate.`);

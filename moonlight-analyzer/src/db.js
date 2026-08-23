@@ -61,6 +61,10 @@ if (!contentsColumns.includes('content_type')) {
 if (!contentsColumns.includes('thumbnail_ext')) {
   db.exec("ALTER TABLE contents ADD COLUMN thumbnail_ext TEXT NOT NULL DEFAULT '.jpg'");
 }
+const platformMetricsColumns = db.prepare("PRAGMA table_info(platform_metrics)").all().map((c) => c.name);
+if (!platformMetricsColumns.includes('followers_gained')) {
+  db.exec('ALTER TABLE platform_metrics ADD COLUMN followers_gained INTEGER');
+}
 
 export function insertContent(content) {
   const stmt = db.prepare(`
@@ -105,9 +109,9 @@ export function updateContentFields(id, fields) {
 export function upsertPlatformMetrics(contentId, platform, metrics) {
   const stmt = db.prepare(`
     INSERT INTO platform_metrics (
-      content_id, platform, url, published_at, likes, comments, shares, saves, reposts, reach, updated_at
+      content_id, platform, url, published_at, likes, comments, shares, saves, reposts, reach, followers_gained, updated_at
     ) VALUES (
-      @content_id, @platform, @url, @published_at, @likes, @comments, @shares, @saves, @reposts, @reach, datetime('now')
+      @content_id, @platform, @url, @published_at, @likes, @comments, @shares, @saves, @reposts, @reach, @followers_gained, datetime('now')
     )
     ON CONFLICT(content_id, platform) DO UPDATE SET
       url = excluded.url,
@@ -118,6 +122,7 @@ export function upsertPlatformMetrics(contentId, platform, metrics) {
       saves = excluded.saves,
       reposts = excluded.reposts,
       reach = excluded.reach,
+      followers_gained = excluded.followers_gained,
       updated_at = datetime('now')
   `);
   stmt.run({
@@ -131,6 +136,7 @@ export function upsertPlatformMetrics(contentId, platform, metrics) {
     saves: metrics.saves ?? 0,
     reposts: metrics.reposts ?? null,
     reach: metrics.reach ?? null,
+    followers_gained: metrics.followers_gained ?? null,
   });
 }
 

@@ -173,7 +173,8 @@ app.delete('/api/contents/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-const NUMERIC_FIELDS = ['likes', 'comments', 'shares', 'saves', 'reposts', 'reach'];
+const NUMERIC_FIELDS = ['likes', 'comments', 'shares', 'saves', 'reposts', 'reach', 'followers_gained'];
+const NULLABLE_NUMERIC_FIELDS = ['reposts', 'followers_gained'];
 
 app.post('/api/contents/:id/metrics', (req, res) => {
   const content = getContentById(req.params.id);
@@ -188,7 +189,7 @@ app.post('/api/contents/:id/metrics', (req, res) => {
   for (const field of NUMERIC_FIELDS) {
     const raw = req.body[field];
     if (raw === undefined || raw === null || raw === '') {
-      metrics[field] = field === 'reposts' ? null : 0;
+      metrics[field] = NULLABLE_NUMERIC_FIELDS.includes(field) ? null : 0;
       continue;
     }
     const num = Number(raw);
