@@ -58,7 +58,9 @@ ${summary}
 
 Domanda di Helga: ${question}
 
-Rispondi in italiano, in modo concreto e specifico, basandoti sui pattern reali che emergono dai dati sopra (non consigli generici). Non usare strumenti per esplorare file esterni: tutte le informazioni necessarie sono già nel testo qui sopra.`;
+Rispondi in italiano, in modo concreto e specifico, basandoti sui pattern reali che emergono dai dati sopra (non consigli generici). Non usare strumenti per esplorare file esterni: tutte le informazioni necessarie sono già nel testo qui sopra.
+
+Scrivi la risposta in TESTO SEMPLICE, senza nessuna formattazione Markdown: niente asterischi ** per il grassetto/corsivo, niente simbolo > per le citazioni, niente # per i titoli, niente elenchi con trattini o numeri seguiti da punto, niente blocchi di codice con backtick. Se vuoi elencare più punti separali semplicemente con un a capo, senza simboli davanti.`;
 
   const env = buildClaudeEnv();
 
