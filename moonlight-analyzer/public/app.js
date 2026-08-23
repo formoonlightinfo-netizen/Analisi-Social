@@ -131,9 +131,22 @@ async function checkPersistStatus() {
   }
 }
 
+let lastContentsSnapshot = null;
 async function loadContents() {
-  state.contents = await api('/api/contents');
-  renderList();
+  const fetched = await api('/api/contents');
+  state.contents = fetched;
+  // renderList() ricostruisce da zero tutti gli <li> della lista. Chiamarlo
+  // ad ogni loadContents() (compreso il refresh automatico quando l'app
+  // torna in primo piano) rimpiazzava gli elementi anche quando i dati non
+  // erano cambiati — su mobile un tap che cade proprio mentre gli elementi
+  // vengono ricreati va perso, dando l'impressione che cliccare un
+  // contenuto non faccia nulla. Aggiorniamo la lista solo se è cambiata
+  // davvero.
+  const snapshot = JSON.stringify(fetched);
+  if (snapshot !== lastContentsSnapshot) {
+    lastContentsSnapshot = snapshot;
+    renderList();
+  }
   ensurePolling();
   checkPersistStatus();
 }
