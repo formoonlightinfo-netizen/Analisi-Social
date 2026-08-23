@@ -628,6 +628,26 @@ archiveToggle.addEventListener('click', () => {
   localStorage.setItem('archiveCollapsed', collapsed ? '1' : '0');
 });
 
+// Pulsante di aggiornamento manuale: il refresh automatico (sotto) non
+// basta su alcuni telefoni dove l'app resta "congelata" senza che il
+// browser avvisi mai la pagina — qui l'utente forza lui stesso una
+// richiesta nuova al server, senza dover indovinare come far ripartire
+// l'aggiornamento automatico.
+const refreshBtn = document.getElementById('refreshBtn');
+refreshBtn.addEventListener('click', async () => {
+  refreshBtn.disabled = true;
+  lastContentsSnapshot = null; // forza il ridisegno anche se i dati sembrano uguali
+  try {
+    await loadContents();
+    if (state.selectedId) await selectContent(state.selectedId);
+    toast('Archivio aggiornato.');
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    refreshBtn.disabled = false;
+  }
+});
+
 // Un'app "aggiunta alla Home" su iPhone spesso resta congelata in
 // background e, quando la riapri, non rifà mai una richiesta al server —
 // mostra semplicemente la schermata rimasta da prima, con dati vecchi. Qui
