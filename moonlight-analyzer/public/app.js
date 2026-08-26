@@ -662,3 +662,7 @@ window.addEventListener('pageshow', (e) => {
 });
 
 loadContents();
+// Indipendente dal polling dei contenuti (che si ferma quando non c'è
+// nessuna analisi in corso): senza questo, il banner di avviso salvataggio
+// poteva restare non aggiornato per ore se non capitavano nuove modifiche.
+setInterval(checkPersistStatus, 60 * 1000);

@@ -340,6 +340,15 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
+// Se un push su GitHub fallisce, il commit resta comunque fatto in locale ma
+// mai inviato: senza questo ritentativo periodico, quei dati restano "in
+// sospeso" finché non arriva un'altra modifica a far ripartire persistDb().
+// Su un filesystem effimero un riavvio nel frattempo li perde per sempre,
+// senza che il banner di avviso (che vive solo in memoria) lasci traccia.
+// persistDb() non fa nulla se non c'è nulla da salvare, quindi è innocuo
+// chiamarlo a vuoto ogni volta.
+setInterval(() => persistDb('Ritenta salvataggio automatico'), 3 * 60 * 1000);
+
 app.listen(PORT, () => {
   console.log(`Moonlight Analyzer in ascolto su http://localhost:${PORT}`);
 });
