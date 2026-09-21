@@ -40,6 +40,24 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
+// Ogni analisi lancia una sessione headless `claude -p` (più pesante di un
+// normale processo Node): se più video/caroselli arrivano vicini nel tempo
+// (es. npm run watch o /api/scan su una cartella incoming/ con più file),
+// senza questa coda partirebbero tutte insieme, sommando la loro memoria e
+// superando facilmente il limite dell'istanza Render (causa riscontrata di
+// "exceeded its memory limit" con riavvio automatico). La coda le esegue una
+// alla volta, mantenendo invariato tutto il resto del flusso.
+let analysisQueue = Promise.resolve();
+
+function enqueueAnalysis(task) {
+  const run = analysisQueue.then(task, task);
+  analysisQueue = run.then(
+    () => {},
+    () => {}
+  );
+  return run;
+}
+
 async function runHeadlessAnalysis(id, dir, prompt) {
   const env = buildClaudeEnv();
 
@@ -71,7 +89,7 @@ async function runHeadlessAnalysis(id, dir, prompt) {
  * @param {string} framesDir - cartella con i fotogrammi .jpg
  */
 export function runAnalysis(id, framesDir) {
-  return runHeadlessAnalysis(id, framesDir, VIDEO_PROMPT);
+  return enqueueAnalysis(() => runHeadlessAnalysis(id, framesDir, VIDEO_PROMPT));
 }
 
 /**
@@ -82,5 +100,5 @@ export function runAnalysis(id, framesDir) {
  * @param {string} imagesDir - cartella con le immagini slide-01.jpg, slide-02.jpg, ...
  */
 export function runCarouselAnalysis(id, imagesDir) {
-  return runHeadlessAnalysis(id, imagesDir, CAROUSEL_PROMPT);
+  return enqueueAnalysis(() => runHeadlessAnalysis(id, imagesDir, CAROUSEL_PROMPT));
 }
