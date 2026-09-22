@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getContentById, updateContentFields } from './db.js';
@@ -50,6 +51,15 @@ export function saveAnalysis(id, analysis) {
   });
 
   cleanupFrames(path.join(FRAMES_DIR, id));
+
+  // Il video originale non serve più una volta salvata l'analisi: Helga può
+  // sempre rivederlo dal post pubblicato (Instagram/TikTok). Non tenerlo su
+  // disco evita di accumulare file pesanti su un hosting con spazio/memoria
+  // limitati — i caroselli invece restano (sono le uniche immagini che
+  // l'app mostra per quel contenuto, non solo un fotogramma temporaneo).
+  if (content.content_type !== 'carousel' && content.processed_path) {
+    fs.rmSync(content.processed_path, { force: true });
+  }
 }
 
 // Uso da riga di comando (chiamato da Claude Code dopo aver guardato i fotogrammi):
