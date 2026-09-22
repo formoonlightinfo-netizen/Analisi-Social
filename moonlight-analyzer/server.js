@@ -221,7 +221,12 @@ app.get('/api/export-processed', (req, res) => {
   res.set('Content-Type', 'application/gzip');
   res.set('Content-Disposition', `attachment; filename="${filename}"`);
 
-  const tar = spawn('tar', ['czf', '-', '-C', PROCESSED_DIR, '.']);
+  // -C sulla cartella madre + nome della cartella (invece di "-C PROCESSED_DIR .")
+  // fa sì che l'archivio contenga una cartella "processed/" di livello
+  // superiore: qualunque programma la estragga (doppio click su macOS
+  // incluso) crea una cartella tutta sua invece di riversare i file sparsi
+  // nella destinazione (es. mescolati con altri file in Download).
+  const tar = spawn('tar', ['czf', '-', '-C', path.dirname(PROCESSED_DIR), path.basename(PROCESSED_DIR)]);
   tar.stdout.pipe(res);
   tar.stderr.on('data', (chunk) => console.error(`tar (export-processed): ${chunk}`));
   tar.on('error', (err) => {
