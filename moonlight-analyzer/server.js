@@ -2,7 +2,6 @@ import 'dotenv/config';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import multer from 'multer';
@@ -207,32 +206,6 @@ app.post('/api/contents/:id/metrics', (req, res) => {
 
 app.get('/api/report', (req, res) => {
   res.json(generateReport());
-});
-
-// Scarica in un colpo solo tutti i video/immagini già caricati (processed/),
-// pensato per un cambio di hosting (es. da Render al Mac): il database e le
-// miniature sono già salvati su GitHub, ma i file originali vivono solo qui
-// sul disco del server — vanno scaricati esplicitamente prima di spegnerlo.
-app.get('/api/export-processed', (req, res) => {
-  if (!fs.existsSync(PROCESSED_DIR)) {
-    return res.status(404).json({ error: 'Nessun contenuto processato da esportare.' });
-  }
-  const filename = `moonlight-processed-${new Date().toISOString().slice(0, 10)}.tar.gz`;
-  res.set('Content-Type', 'application/gzip');
-  res.set('Content-Disposition', `attachment; filename="${filename}"`);
-
-  // -C sulla cartella madre + nome della cartella (invece di "-C PROCESSED_DIR .")
-  // fa sì che l'archivio contenga una cartella "processed/" di livello
-  // superiore: qualunque programma la estragga (doppio click su macOS
-  // incluso) crea una cartella tutta sua invece di riversare i file sparsi
-  // nella destinazione (es. mescolati con altri file in Download).
-  const tar = spawn('tar', ['czf', '-', '-C', path.dirname(PROCESSED_DIR), path.basename(PROCESSED_DIR)]);
-  tar.stdout.pipe(res);
-  tar.stderr.on('data', (chunk) => console.error(`tar (export-processed): ${chunk}`));
-  tar.on('error', (err) => {
-    console.error(`✘ Export di processed/ fallito: ${err.message}`);
-    if (!res.headersSent) res.status(500).json({ error: err.message });
-  });
 });
 
 // Chiede a Claude Code (headless, stesso meccanismo gratuito dell'analisi
