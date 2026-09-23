@@ -552,12 +552,6 @@ document.getElementById('askBtn').addEventListener('click', () => {
 });
 document.getElementById('closeAsk').addEventListener('click', () => askOverlay.classList.add('hidden'));
 
-// Scarica in un colpo solo tutti i video/immagini già caricati (es. prima di
-// spostare l'app su un altro hosting) — vedi GET /api/export-processed.
-document.getElementById('exportBtn').addEventListener('click', () => {
-  window.location.href = '/api/export-processed';
-});
-
 askSubmitBtn.addEventListener('click', async () => {
   const question = askInput.value.trim();
   if (!question) {
